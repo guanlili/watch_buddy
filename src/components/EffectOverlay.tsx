@@ -54,7 +54,9 @@ function ConfettiBurst() {
         animate={{ opacity: [0, 0.4, 0], scale: [0.4, 1.6, 2.4] }}
         transition={{ duration: 1.6 }}
         className="absolute inset-0"
-        style={{ background: "radial-gradient(circle at 50% 40%, rgba(255,215,80,0.5), transparent 60%)" }}
+        style={{
+          background: "radial-gradient(circle at 50% 40%, rgba(255,215,80,0.5), transparent 60%)",
+        }}
       />
     </motion.div>
   );
@@ -76,7 +78,11 @@ function ExplosionFlash() {
         transition={{ duration: 0.7 }}
         exit={{ opacity: 0 }}
         className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(255,180,60,0.9), rgba(255,60,40,0.4) 40%, transparent 70%)", filter: "blur(2px)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(255,180,60,0.9), rgba(255,60,40,0.4) 40%, transparent 70%)",
+          filter: "blur(2px)",
+        }}
       />
       <div className="absolute inset-0 animate-shake" />
     </>
@@ -86,8 +92,19 @@ function ExplosionFlash() {
 function RainFall() {
   const drops = Array.from({ length: 120 });
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,20,40,0.5), rgba(0,0,0,0.6))", filter: "grayscale(0.7)" }} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0"
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(180deg, rgba(20,20,40,0.5), rgba(0,0,0,0.6))",
+          filter: "grayscale(0.7)",
+        }}
+      />
       {drops.map((_, i) => {
         const left = Math.random() * 100;
         const delay = Math.random() * 1.5;

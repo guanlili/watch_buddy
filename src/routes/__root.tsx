@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ParticleBackground } from "@/components/ParticleBackground";
 import { Toaster } from "@/components/ui/sonner";
+import { AppShell } from "@/components/AppShell";
 
 function NotFoundComponent() {
   return (
@@ -134,7 +135,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ParticleBackground />
-      <AnimatedOutlet />
+      <AppShell>
+        <AnimatedOutlet />
+      </AppShell>
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );

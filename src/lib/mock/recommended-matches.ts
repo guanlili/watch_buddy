@@ -74,13 +74,16 @@ export const RECOMMENDED_MATCHES: RecommendedMatch[] = [
 ];
 
 // 根据用户档案获取推荐赛事
-export function getRecommendedMatches(userProfile: { tournament: string; team: string }): RecommendedMatch[] {
+export function getRecommendedMatches(userProfile: {
+  tournament: string;
+  team: string;
+}): RecommendedMatch[] {
   // 先找到用户选择的赛事
   const userTournament = TOURNAMENTS.find((t) => t.id === userProfile.tournament);
   const userTournamentName = userTournament?.name || "";
-  
-  let matches = [...RECOMMENDED_MATCHES];
-  
+
+  const matches = [...RECOMMENDED_MATCHES];
+
   // 优先排序：用户选择的赛事优先，正在直播的优先，然后按时间排序
   matches.sort((a, b) => {
     // 用户选择的赛事优先
@@ -89,16 +92,16 @@ export function getRecommendedMatches(userProfile: { tournament: string; team: s
     if (aIsUserTournament !== bIsUserTournament) {
       return aIsUserTournament ? -1 : 1;
     }
-    
+
     // 正在直播的优先
     if (a.isLive !== b.isLive) {
       return a.isLive ? -1 : 1;
     }
-    
+
     // 按开始时间排序
     return a.startTime - b.startTime;
   });
-  
+
   // 返回前3个
   return matches.slice(0, 3);
 }

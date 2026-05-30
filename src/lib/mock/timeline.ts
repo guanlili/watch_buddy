@@ -129,7 +129,15 @@ export const TIMELINE: MatchEvent[] = [
 ];
 
 // Generic responses to user input — keyword based
-export const USER_RESPONSE_PACKS: { keywords: string[]; replies: { text: string; emotion: import("./types").EmotionLabel; intensity: 1 | 2 | 3 | 4 | 5; isGoldenQuote?: boolean }[] }[] = [
+export const USER_RESPONSE_PACKS: {
+  keywords: string[];
+  replies: {
+    text: string;
+    emotion: import("./types").EmotionLabel;
+    intensity: 1 | 2 | 3 | 4 | 5;
+    isGoldenQuote?: boolean;
+  }[];
+}[] = [
   {
     keywords: ["菜", "垃圾", "坑", "傻"],
     replies: [
@@ -140,7 +148,12 @@ export const USER_RESPONSE_PACKS: { keywords: string[]; replies: { text: string;
   {
     keywords: ["稳", "牛", "强", "厉害", "666"],
     replies: [
-      { text: "这把稳了兄弟，我都已经准备好截图发朋友圈了", emotion: "ecstasy", intensity: 4, isGoldenQuote: true },
+      {
+        text: "这把稳了兄弟，我都已经准备好截图发朋友圈了",
+        emotion: "ecstasy",
+        intensity: 4,
+        isGoldenQuote: true,
+      },
       { text: "牛逼！这才叫电竞！", emotion: "ecstasy", intensity: 4 },
     ],
   },
@@ -160,22 +173,36 @@ export const USER_RESPONSE_PACKS: { keywords: string[]; replies: { text: string;
   },
   {
     keywords: ["哈哈", "笑", "搞笑"],
-    replies: [
-      { text: "笑死，这场比赛真的什么都能发生", emotion: "ecstasy", intensity: 3 },
-    ],
+    replies: [{ text: "笑死，这场比赛真的什么都能发生", emotion: "ecstasy", intensity: 3 }],
   },
 ];
 
 // Fallback "之外" reply when no keyword matches
 export const FALLBACK_REPLIES = [
-  { text: "懂你的意思，但咱先看场上节奏，待会儿团一波见真章", emotion: "calm" as const, intensity: 2 as const },
-  { text: "你这话有点意思，等会儿赢了我就把这句截下来", emotion: "calm" as const, intensity: 2 as const },
+  {
+    text: "懂你的意思，但咱先看场上节奏，待会儿团一波见真章",
+    emotion: "calm" as const,
+    intensity: 2 as const,
+  },
+  {
+    text: "你这话有点意思，等会儿赢了我就把这句截下来",
+    emotion: "calm" as const,
+    intensity: 2 as const,
+  },
   { text: "嗯嗯听你的，反正我永远站 TES", emotion: "calm" as const, intensity: 2 as const },
 ];
 
 // Idle (cold-start) opener replies
 export const IDLE_OPENERS = [
   { text: "兄弟你睡着了？这一波运营你怎么看？", emotion: "calm" as const, intensity: 2 as const },
-  { text: "我突然想到一个事，你说这把要是输了你能挺住不？", emotion: "calm" as const, intensity: 2 as const },
-  { text: "无聊了说点啥啊，给我聊聊你最讨厌哪个解说？", emotion: "calm" as const, intensity: 2 as const },
+  {
+    text: "我突然想到一个事，你说这把要是输了你能挺住不？",
+    emotion: "calm" as const,
+    intensity: 2 as const,
+  },
+  {
+    text: "无聊了说点啥啊，给我聊聊你最讨厌哪个解说？",
+    emotion: "calm" as const,
+    intensity: 2 as const,
+  },
 ];

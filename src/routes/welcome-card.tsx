@@ -21,23 +21,23 @@ function WelcomeCard() {
   // 获取显示名称
   const getDisplayName = () => {
     if (!profile) return { tournament: "", team: "", player: "" };
-    
+
     let tournamentName = profile.customTournament || "";
     let teamName = profile.customTeam || "";
     let playerName = profile.customPlayer || "";
-    
+
     if (profile.tournament !== "custom") {
-      const tournament = TOURNAMENTS.find(t => t.id === profile.tournament);
+      const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
       if (tournament) {
         tournamentName = tournament.name;
-        
+
         if (profile.team !== "custom") {
-          const team = tournament.teams.find(t => t.id === profile.team);
+          const team = tournament.teams.find((t) => t.id === profile.team);
           if (team) {
             teamName = team.name;
-            
+
             if (profile.player !== "custom") {
-              const player = team.players.find(p => p.id === profile.player);
+              const player = team.players.find((p) => p.id === profile.player);
               if (player) {
                 playerName = player.name;
               }
@@ -46,7 +46,7 @@ function WelcomeCard() {
         }
       }
     }
-    
+
     return { tournament: tournamentName, team: teamName, player: playerName };
   };
 
@@ -66,7 +66,7 @@ function WelcomeCard() {
     }, 35);
     setTimeout(() => speakTTS(greeting), 200);
     return () => clearInterval(t);
-  }, []);
+  }, [greeting, nav, profile]);
 
   if (!profile) return null;
 
@@ -95,7 +95,8 @@ function WelcomeCard() {
                 <Sparkles className="h-4 w-4" /> Official Member
               </div>
               <h1 className="title-stroke relative mt-3 text-3xl sm:text-5xl">
-                恭喜！你已正式加入<br />
+                恭喜！你已正式加入
+                <br />
                 <span className="text-accent glow-text-accent">【毒奶观察室】</span>
               </h1>
 
@@ -104,7 +105,9 @@ function WelcomeCard() {
                   <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
                     <span className="text-2xl">🏆</span>
                     <div>
-                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">赛事</div>
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                        赛事
+                      </div>
                       <div className="font-display text-sm">{tournament}</div>
                     </div>
                   </div>
@@ -113,7 +116,9 @@ function WelcomeCard() {
                   <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
                     <Trophy className="h-5 w-5 text-accent" />
                     <div>
-                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">主队</div>
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                        主队
+                      </div>
                       <div className="font-display text-sm">{team}</div>
                     </div>
                   </div>
@@ -122,7 +127,9 @@ function WelcomeCard() {
                   <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
                     <span className="text-2xl">🎯</span>
                     <div>
-                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">本命选手</div>
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                        本命选手
+                      </div>
                       <div className="font-display text-sm">{player}</div>
                     </div>
                   </div>
@@ -130,7 +137,9 @@ function WelcomeCard() {
                 <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
                   <span className="text-2xl">📡</span>
                   <div>
-                    <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">提醒</div>
+                    <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                      提醒
+                    </div>
                     <div className="font-display text-sm">开赛前 {profile.pushTiming} 分钟</div>
                   </div>
                 </div>
@@ -140,18 +149,25 @@ function WelcomeCard() {
 
           <GlassCard glow="accent" className="mt-6">
             <div className="mb-2 flex items-center gap-2 text-xs">
-              <span className="rounded-md bg-accent/30 px-2 py-0.5 font-display uppercase tracking-wider text-accent">AI 搭子</span>
+              <span className="rounded-md bg-accent/30 px-2 py-0.5 font-display uppercase tracking-wider text-accent">
+                AI 搭子
+              </span>
               <span className="text-muted-foreground">正在播报…</span>
             </div>
             <p className="text-base leading-relaxed">
               {typed}
-              <span className="ml-1 inline-block h-4 w-2 bg-accent" style={{ animation: "type-cursor 0.8s infinite" }} />
+              <span
+                className="ml-1 inline-block h-4 w-2 bg-accent"
+                style={{ animation: "type-cursor 0.8s infinite" }}
+              />
             </p>
           </GlassCard>
 
           {/* Demo push preview */}
           <div className="mt-6">
-            <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">📬 一条示例赛前提醒</div>
+            <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">
+              📬 一条示例赛前提醒
+            </div>
             <GlassCard glow="primary">
               <div className="text-xs uppercase tracking-widest text-accent">毒奶观察室</div>
               <div className="mt-1 font-display text-lg">

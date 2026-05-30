@@ -48,7 +48,14 @@ export const useAppStore = create<AppState>()(
       setMatchMinute: (m) => set({ matchMinute: m }),
       endMatch: (result) => set({ matchEnded: true, finalResult: result }),
       resetMatch: () =>
-        set({ logs: [], flags: [], score: { ours: 0, theirs: 0 }, matchMinute: 0, matchEnded: false, finalResult: null }),
+        set({
+          logs: [],
+          flags: [],
+          score: { ours: 0, theirs: 0 },
+          matchMinute: 0,
+          matchEnded: false,
+          finalResult: null,
+        }),
     }),
     { name: "esports-buddy-state" },
   ),

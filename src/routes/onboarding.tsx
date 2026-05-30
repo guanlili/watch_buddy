@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { Input } from "@/components/Input";
@@ -9,7 +10,13 @@ import type { FanType, PushChannel } from "@/lib/mock/types";
 import { TOURNAMENTS } from "@/lib/mock/types";
 import { Check, ChevronRight, Phone, Mail, MessageCircle, Plus } from "lucide-react";
 
+const SearchSchema = z.object({
+  // ?edit=1 进入编辑模式：跳过登录步、预填已有档案、保存后回 /chat
+  edit: z.coerce.number().optional(),
+});
+
 export const Route = createFileRoute("/onboarding")({
+  validateSearch: SearchSchema,
   head: () => ({ meta: [{ title: "毒奶观察室 · 注册" }] }),
   component: Onboarding,
 });
@@ -28,33 +35,58 @@ const FAN_TYPES: { value: FanType; label: string; desc: string }[] = [
 function Onboarding() {
   const nav = useNavigate();
   const setProfile = useAppStore((s) => s.setProfile);
-  // 老用户带档案进来时直接跳走，别让他们再填一遍。
-  // 空 deps：避免 finish() 调 setProfile 后又把刚填完的新用户跳到 /chat
-  // （新用户应该走 /welcome-card）。
+  const { edit } = Route.useSearch();
+  // 挂载时取一次档案；后面所有 init / 守卫都用这份快照，避免 finish() 后再变化。
+  const [initialProfile] = useState(() => useAppStore.getState().profile);
+  const isEditing = edit === 1 && !!initialProfile;
+
+  // 老用户无意中进来（没带 ?edit=1）直接送回 /chat。
   useEffect(() => {
-    if (useAppStore.getState().profile) {
+    if (initialProfile && !isEditing) {
       nav({ to: "/chat", replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [step, setStep] = useState(0); // 0: login, 1: tournament, 2: team, 3: player, 4: preferences
 
-  // 状态
-  const [tournament, setTournament] = useState<string>("");
-  const [customTournament, setCustomTournament] = useState<string>("");
-  const [showCustomTournament, setShowCustomTournament] = useState(false);
+  // 编辑模式跳过登录步；step 0 = 登录, 1 = 赛事, 2 = 主队, 3 = 选手, 4 = 偏好
+  const [step, setStep] = useState(isEditing ? 1 : 0);
 
-  const [team, setTeam] = useState<string>("");
-  const [customTeam, setCustomTeam] = useState<string>("");
-  const [showCustomTeam, setShowCustomTeam] = useState(false);
+  // 状态（编辑模式从已有档案预填）
+  const [tournament, setTournament] = useState<string>(
+    isEditing && initialProfile ? initialProfile.tournament : "",
+  );
+  const [customTournament, setCustomTournament] = useState<string>(
+    isEditing && initialProfile?.customTournament ? initialProfile.customTournament : "",
+  );
+  const [showCustomTournament, setShowCustomTournament] = useState(
+    isEditing && !!initialProfile?.customTournament,
+  );
 
-  const [player, setPlayer] = useState<string>("");
-  const [customPlayer, setCustomPlayer] = useState<string>("");
-  const [showCustomPlayer, setShowCustomPlayer] = useState(false);
+  const [team, setTeam] = useState<string>(isEditing && initialProfile ? initialProfile.team : "");
+  const [customTeam, setCustomTeam] = useState<string>(
+    isEditing && initialProfile?.customTeam ? initialProfile.customTeam : "",
+  );
+  const [showCustomTeam, setShowCustomTeam] = useState(isEditing && !!initialProfile?.customTeam);
 
-  const [channels, setChannels] = useState<PushChannel[]>(["app"]);
-  const [timing, setTiming] = useState(30);
-  const [fanType, setFanType] = useState<FanType>("diehard");
+  const [player, setPlayer] = useState<string>(
+    isEditing && initialProfile ? initialProfile.player : "",
+  );
+  const [customPlayer, setCustomPlayer] = useState<string>(
+    isEditing && initialProfile?.customPlayer ? initialProfile.customPlayer : "",
+  );
+  const [showCustomPlayer, setShowCustomPlayer] = useState(
+    isEditing && !!initialProfile?.customPlayer,
+  );
+
+  const [channels, setChannels] = useState<PushChannel[]>(
+    isEditing && initialProfile ? initialProfile.pushChannels : ["app"],
+  );
+  const [timing, setTiming] = useState(
+    isEditing && initialProfile ? initialProfile.pushTiming : 30,
+  );
+  const [fanType, setFanType] = useState<FanType>(
+    isEditing && initialProfile ? initialProfile.fanType : "diehard",
+  );
   const [aiQuip, setAiQuip] = useState<string | null>(null);
 
   // 获取当前选中的赛事数据
@@ -93,7 +125,7 @@ function Onboarding() {
 
   const finish = () => {
     setProfile({
-      nickname: "兄弟",
+      nickname: initialProfile?.nickname ?? "兄弟",
       tournament,
       team,
       player,
@@ -104,10 +136,14 @@ function Onboarding() {
       pushTiming: timing,
       fanType,
     });
-    nav({ to: "/welcome-card" });
+    // 编辑模式回 chat（不再走新用户的欢迎卡动画），新用户走完整欢迎流。
+    nav({ to: isEditing ? "/chat" : "/welcome-card" });
   };
 
-  const stepTitles = ["登录", "选择赛事", "选择主队", "选择选手", "推送偏好"];
+  // 编辑模式跳过登录步，进度条只展示 4 项。
+  const allStepTitles = ["登录", "选择赛事", "选择主队", "选择选手", "推送偏好"];
+  const stepTitles = isEditing ? allStepTitles.slice(1) : allStepTitles;
+  const displayedStep = isEditing ? step - 1 : step;
 
   return (
     <main className="relative min-h-screen px-4 py-10">
@@ -118,9 +154,9 @@ function Onboarding() {
             <div
               key={t}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-display text-[10px] uppercase tracking-wider ${
-                i === step
+                i === displayedStep
                   ? "neon-border-accent bg-accent/20 text-accent"
-                  : i < step
+                  : i < displayedStep
                     ? "border border-primary/50 bg-primary/20 text-foreground"
                     : "border border-border text-muted-foreground"
               }`}
@@ -506,7 +542,7 @@ function Onboarding() {
                     上一步
                   </NeonButton>
                   <NeonButton variant="ember" size="lg" onClick={finish}>
-                    🔥 搞定，开冲
+                    {isEditing ? "💾 保存修改" : "🔥 搞定，开冲"}
                   </NeonButton>
                 </div>
               </GlassCard>

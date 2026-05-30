@@ -7,7 +7,13 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
-export function NeonButton({ variant = "primary", size = "md", className, children, ...props }: Props) {
+export function NeonButton({
+  variant = "primary",
+  size = "md",
+  className,
+  children,
+  ...props
+}: Props) {
   const variants: Record<string, string> = {
     primary: "bg-primary/30 text-foreground neon-border-primary hover:bg-primary/50",
     accent: "bg-accent/20 text-accent-foreground neon-border-accent hover:bg-accent/40",

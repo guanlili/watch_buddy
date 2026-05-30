@@ -9,11 +9,29 @@ export interface EmotionMeta {
 }
 
 export const EMOTION_MAP: Record<EmotionLabel, EmotionMeta> = {
-  ecstasy:    { label: "狂喜", emoji: "🎉", color: "var(--ecstasy)",    effect: "confetti",  beepFreq: 880 },
-  anger:      { label: "愤怒", emoji: "💥", color: "var(--anger)",      effect: "explosion", beepFreq: 220 },
-  devastated: { label: "破防", emoji: "🌧️", color: "var(--devastated)", effect: "rain",      beepFreq: 180 },
-  tension:    { label: "紧张", emoji: "💓", color: "var(--tension)",    effect: "heartbeat", beepFreq: 440 },
-  calm:       { label: "平淡", emoji: "💬", color: "var(--calm)",       effect: "none" },
+  ecstasy: {
+    label: "狂喜",
+    emoji: "🎉",
+    color: "var(--ecstasy)",
+    effect: "confetti",
+    beepFreq: 880,
+  },
+  anger: { label: "愤怒", emoji: "💥", color: "var(--anger)", effect: "explosion", beepFreq: 220 },
+  devastated: {
+    label: "破防",
+    emoji: "🌧️",
+    color: "var(--devastated)",
+    effect: "rain",
+    beepFreq: 180,
+  },
+  tension: {
+    label: "紧张",
+    emoji: "💓",
+    color: "var(--tension)",
+    effect: "heartbeat",
+    beepFreq: 440,
+  },
+  calm: { label: "平淡", emoji: "💬", color: "var(--calm)", effect: "none" },
 };
 
 // Synth beep (no audio file needed)
@@ -21,7 +39,10 @@ let audioCtx: AudioContext | null = null;
 export function playBeep(freq: number, duration = 0.25) {
   if (typeof window === "undefined") return;
   try {
-    audioCtx ||= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    audioCtx ||= new (
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    )();
     const ctx = audioCtx;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

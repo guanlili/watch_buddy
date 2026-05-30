@@ -68,34 +68,41 @@ watch_buddy/
 ## 功能模块
 
 ### 1. 欢迎页 (`/`)
+
 - AI 搭子自我介绍
 - 炫酷赛博风格设计
 
 ### 2. 兴趣收集 (`/onboarding`)
+
 - 四步卡片式兴趣收集
 - 个性化偏好设置
 
 ### 3. 专属欢迎卡 (`/welcome-card`)
+
 - 动态欢迎海报
 - AI 语音播报
 
 ### 4. 赛前阵地 (`/pre-match`)
+
 - 比赛倒计时
 - 数据预览
 - AI 预测
 
 ### 5. 赛中陪伴 (`/match`)
+
 - 实时对话流（用户消息走真 LLM，搭子人设回复）
 - 时间线事件 + 闲置主动搭话仍走预制脚本
 - 支持文字 / 语音输入二选一（微信式按住说话 · 上滑取消）
 - 情绪条 / 视觉特效 / 音效反馈
 
 ### 6. 赛后回顾 (`/post-match`)
+
 - 情绪曲线图
 - 纪念海报：3 风格变体 + 配置面板（选手 / 游戏角色 / 想说的话），按需调 Seedream 生成
 - 文案：朋友圈 / 官方社媒两种场景，按用户球迷类型自动切风格
 
 ### 7. 提示词管理端 (`/admin`)
+
 - 隐藏入口，主站不挂链接
 - 集中编辑所有提示词模板，支持 `{{var}}` 占位符
 - 内置「试运行」面板：填示例变量 → 直接调 chatCompletion / generatePoster 看真实输出
@@ -118,13 +125,13 @@ npm install
 cp .env.example .env
 ```
 
-| 变量 | 必填 | 用途 | 申请 |
-|---|---|---|---|
-| `TOKENDANCE_API_KEY` | 是 | 大模型对话 + 海报生成 | https://tokendance.space/keys |
-| `STEP_API_KEY` | 是 | 语音识别 | https://platform.stepfun.com/interface-key |
-| `TOKENDANCE_MODEL` | 否 | 默认 `deepseek-v3.2`，可换 `minimax-m2.5` / `claude-sonnet-4-5` 等 | — |
-| `TOKENDANCE_BASE_URL` | 否 | 默认 `https://tokendance.space/gateway` | — |
-| `STEP_BASE_URL` | 否 | 默认 `https://api.stepfun.com` | — |
+| 变量                  | 必填 | 用途                                                               | 申请                                       |
+| --------------------- | ---- | ------------------------------------------------------------------ | ------------------------------------------ |
+| `TOKENDANCE_API_KEY`  | 是   | 大模型对话 + 海报生成                                              | https://tokendance.space/keys              |
+| `STEP_API_KEY`        | 是   | 语音识别                                                           | https://platform.stepfun.com/interface-key |
+| `TOKENDANCE_MODEL`    | 否   | 默认 `deepseek-v3.2`，可换 `minimax-m2.5` / `claude-sonnet-4-5` 等 | —                                          |
+| `TOKENDANCE_BASE_URL` | 否   | 默认 `https://tokendance.space/gateway`                            | —                                          |
+| `STEP_BASE_URL`       | 否   | 默认 `https://api.stepfun.com`                                     | —                                          |
 
 `.env` 已被 gitignore，不会误提交。
 
@@ -158,10 +165,10 @@ npm run preview
 
 所有面向 LLM / 生图模型的提示词都集中在 `src/lib/prompts/registry.ts` 的 `PROMPT_DEFAULTS` 里，分 3 组：
 
-| 分组 | 包含 | 在哪用 |
-|---|---|---|
-| 搭子人设 | `buddy.persona` + 3 个 `buddy.fan-mirror.*` | `/chat` 和 `/match` 的 system prompt |
-| 海报 | `poster.variant.0/1/2` (荣耀叙事 / 吐槽梗图 / 复盘理性) | `/post-match` 的 Seedream 调用 |
+| 分组     | 包含                                                                      | 在哪用                                                    |
+| -------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 搭子人设 | `buddy.persona` + 3 个 `buddy.fan-mirror.*`                               | `/chat` 和 `/match` 的 system prompt                      |
+| 海报     | `poster.variant.0/1/2` (荣耀叙事 / 吐槽梗图 / 复盘理性)                   | `/post-match` 的 Seedream 调用                            |
 | 赛后文案 | `post-match-copy.frame` + 7 个片段（场景定位 ×2 / 风格 ×3 / 生成要求 ×2） | `/post-match`；按 scenario × fanType 只拼相关片段进 frame |
 
 模板里可以用 `{{var}}` 或 `{var}` 占位（两种语法都支持），代码 build 时调用 `substitute()` 替换。每个 prompt 的可用变量在 `PROMPT_META[id].knownVars`。
@@ -178,12 +185,12 @@ npm run preview
 
 ## AI 调用链
 
-| 入口 | 服务端函数 | 上游 |
-|---|---|---|
-| `/chat` `/match` 用户消息 | `chatCompletion` | TokenDance `/v1/chat/completions` |
-| 麦克风按钮 | `transcribeAudio` | StepFun `/v1/audio/asr/sse` (SSE) |
-| 海报生成按钮 | `generatePoster` | TokenDance `/v1/images/generations` |
-| 赛后文案 tab | `chatCompletion` | 同上 |
+| 入口                      | 服务端函数        | 上游                                |
+| ------------------------- | ----------------- | ----------------------------------- |
+| `/chat` `/match` 用户消息 | `chatCompletion`  | TokenDance `/v1/chat/completions`   |
+| 麦克风按钮                | `transcribeAudio` | StepFun `/v1/audio/asr/sse` (SSE)   |
+| 海报生成按钮              | `generatePoster`  | TokenDance `/v1/images/generations` |
+| 赛后文案 tab              | `chatCompletion`  | 同上                                |
 
 所有 API Key 只在 `*.server.ts` / `*.functions.ts` 里读，不会进客户端 bundle。
 
@@ -241,6 +248,7 @@ npm run start
 ### 方案 2：纯静态部署（无后端）
 
 只部署静态前端，不支持服务端 API（**聊天、语音、海报、文案生成全部失效**，只能看 UI）：
+
 - **Vercel / Netlify**:
   - Build command: `npm run build`
   - Publish directory: `dist/client`

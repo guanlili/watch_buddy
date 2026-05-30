@@ -44,6 +44,7 @@ src/routes/
 ## 设计系统（src/styles.css）
 
 新增 oklch 语义 token：
+
 - `--background`：深色渐变基底
 - `--primary`：深空紫
 - `--accent`：电光青

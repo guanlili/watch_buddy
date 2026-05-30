@@ -72,10 +72,6 @@ export function ParticleBackground() {
   }, []);
 
   return (
-    <canvas
-      ref={ref}
-      className="pointer-events-none fixed inset-0 -z-10 opacity-60"
-      aria-hidden
-    />
+    <canvas ref={ref} className="pointer-events-none fixed inset-0 -z-10 opacity-60" aria-hidden />
   );
 }

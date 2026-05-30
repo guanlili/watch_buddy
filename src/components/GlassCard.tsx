@@ -17,12 +17,7 @@ export function GlassCard({ glow = "none", strong = false, className, children, 
   return (
     <div
       {...props}
-      className={cn(
-        strong ? "glass-strong" : "glass",
-        "rounded-2xl p-5",
-        glowClass,
-        className,
-      )}
+      className={cn(strong ? "glass-strong" : "glass", "rounded-2xl p-5", glowClass, className)}
     >
       {children}
     </div>
