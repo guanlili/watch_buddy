@@ -68,6 +68,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "毒奶观察室 · AI 电竞赛事搭子" },
+      { name: "twitter:description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
