@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/lib/mock/store";
+import { TOURNAMENTS } from "@/lib/mock/types";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
@@ -21,7 +22,28 @@ function PostMatch() {
   const flags = useAppStore((s) => s.flags);
   const finalResult = useAppStore((s) => s.finalResult);
   const nav = useNavigate();
-  const team = profile?.favoriteTeams[0] ?? "TES";
+  
+  // 获取用户选择的主队名称
+  function getTeamName(): string {
+    if (!profile) return "TES";
+    
+    // 如果是自定义的队伍
+    if (profile.team === "custom" && profile.customTeam) {
+      return profile.customTeam;
+    }
+    
+    // 从TOURNAMENTS中找到对应的队伍
+    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    if (tournament) {
+      const team = tournament.teams.find((t) => t.id === profile.team);
+      if (team) return team.name;
+    }
+    
+    // 兜底
+    return "TES";
+  }
+  
+  const team = getTeamName();
 
   const [selectedPoster, setSelectedPoster] = useState<0 | 1 | 2>(0);
   const [tier, setTier] = useState<"light" | "deep">("light");

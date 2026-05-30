@@ -12,6 +12,7 @@ import {
 } from "@/lib/mock/timeline";
 import { EMOTION_MAP, playBeep, speakTTS } from "@/lib/mock/emotion-map";
 import type { EmotionLabel, EmotionLogEntry } from "@/lib/mock/types";
+import { TOURNAMENTS } from "@/lib/mock/types";
 import { EffectOverlay } from "@/components/EffectOverlay";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
@@ -143,7 +144,28 @@ function buildUserFeedback(
 function Match() {
   const nav = useNavigate();
   const profile = useAppStore((s) => s.profile);
-  const team = profile?.favoriteTeams[0] ?? "TES";
+  
+  // 获取用户选择的主队名称
+  function getTeamName(): string {
+    if (!profile) return "TES";
+    
+    // 如果是自定义的队伍
+    if (profile.team === "custom" && profile.customTeam) {
+      return profile.customTeam;
+    }
+    
+    // 从TOURNAMENTS中找到对应的队伍
+    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    if (tournament) {
+      const team = tournament.teams.find((t) => t.id === profile.team);
+      if (team) return team.name;
+    }
+    
+    // 兜底
+    return "TES";
+  }
+  
+  const team = getTeamName();
   const {
     addLog,
     addFlag,

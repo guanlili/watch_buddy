@@ -165,8 +165,8 @@ function WelcomeCard() {
             <Link to="/onboarding">
               <NeonButton variant="ghost">改设置</NeonButton>
             </Link>
-            <NeonButton variant="ember" size="lg" onClick={() => nav({ to: "/pre-match" })}>
-              进赛前阵地 →
+            <NeonButton variant="ember" size="lg" onClick={() => nav({ to: "/chat" })}>
+              开始聊天 →
             </NeonButton>
           </div>
         </motion.div>

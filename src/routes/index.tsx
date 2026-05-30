@@ -26,8 +26,8 @@ function WelcomePage() {
   useEffect(() => {
     // 检查是否已经有档案
     if (profile) {
-      // 如果有档案，直接跳转到赛前阵地
-      nav({ to: "/pre-match" });
+      // 如果有档案，直接跳转到聊天页面
+      nav({ to: "/chat" });
     } else {
       setIsChecking(false);
     }

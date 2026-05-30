@@ -178,3 +178,13 @@ export interface MatchEvent {
     flag?: { action: "create" | "resolve"; content: string; hit?: boolean };
   };
 }
+
+export interface RecommendedMatch {
+  id: string;
+  tournamentId: string;
+  tournamentName: string;
+  team1: string;
+  team2: string;
+  startTime: number; // timestamp
+  isLive: boolean;
+}

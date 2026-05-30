@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { useAppStore } from "@/lib/mock/store";
+import { TOURNAMENTS } from "@/lib/mock/types";
 import { Share2, Bell, EyeOff, TrendingUp, Swords } from "lucide-react";
 
 export const Route = createFileRoute("/pre-match")({
@@ -16,7 +17,28 @@ const KICKOFF_SECONDS = 60 * 30; // visual countdown 30 min — but in demo we t
 function PreMatch() {
   const profile = useAppStore((s) => s.profile);
   const nav = useNavigate();
-  const team = profile?.favoriteTeams[0] ?? "TES";
+  
+  // 获取用户选择的主队名称
+  function getTeamName(): string {
+    if (!profile) return "TES";
+    
+    // 如果是自定义的队伍
+    if (profile.team === "custom" && profile.customTeam) {
+      return profile.customTeam;
+    }
+    
+    // 从TOURNAMENTS中找到对应的队伍
+    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    if (tournament) {
+      const team = tournament.teams.find((t) => t.id === profile.team);
+      if (team) return team.name;
+    }
+    
+    // 兜底
+    return "TES";
+  }
+  
+  const team = getTeamName();
   const [secondsLeft, setSecondsLeft] = useState(KICKOFF_SECONDS);
   const [muted, setMuted] = useState(false);
 
