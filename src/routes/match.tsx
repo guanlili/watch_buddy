@@ -13,11 +13,25 @@ import {
 import { EMOTION_MAP, playBeep, speakTTS } from "@/lib/mock/emotion-map";
 import type { EmotionLabel, EmotionLogEntry } from "@/lib/mock/types";
 import { TOURNAMENTS } from "@/lib/mock/types";
+import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
+import { buildLiveMatchSystemPrompt } from "@/lib/prompts/buddy";
+import { MicButton } from "@/components/MicButton";
 import { EffectOverlay } from "@/components/EffectOverlay";
 import { GlassCard } from "@/components/GlassCard";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
-import { Activity, Flame, Lightbulb, MessageCircle, Radio, Send, Trophy, Zap } from "lucide-react";
+import {
+  Activity,
+  Flame,
+  Keyboard,
+  Lightbulb,
+  MessageCircle,
+  Mic,
+  Radio,
+  Send,
+  Trophy,
+  Zap,
+} from "lucide-react";
 
 export const Route = createFileRoute("/match")({
   head: () => ({ meta: [{ title: "毒奶观察室 · 赛中" }] }),
@@ -99,7 +113,8 @@ function buildPromptChoices(
   return ["这波怎么看？", "给我预测下一波", "我有点紧张"];
 }
 
-function buildUserFeedback(
+// 仅用作 LLM 调用失败时的兜底文案。
+function buildUserFeedbackFallback(
   text: string,
   minute: number,
   score: { ours: number; theirs: number },
@@ -140,6 +155,32 @@ function buildUserFeedback(
     ...base,
     text: `${eventContext}${scoreContext}，你说得有点道理。${base.text} ${minuteContext}`,
   };
+}
+
+// 关键字嗅探出情绪与强度——给视觉特效/情绪日志用，文本由 LLM 出。
+function inferUserReplyAffect(
+  text: string,
+  score: { ours: number; theirs: number },
+): { emotion: EmotionLabel; intensity: 1 | 2 | 3 | 4 | 5; isGoldenQuote: boolean } {
+  const lower = text.toLowerCase();
+  if (["赌", "预测", "flag"].some((k) => lower.includes(k))) {
+    return { emotion: "tension", intensity: 4, isGoldenQuote: true };
+  }
+  const matchedPack = USER_RESPONSE_PACKS.find((pack) =>
+    pack.keywords.some((k) => text.includes(k)),
+  );
+  if (matchedPack) {
+    const sample = pickOne(matchedPack.replies);
+    return {
+      emotion: sample.emotion,
+      intensity: sample.intensity,
+      isGoldenQuote: !!sample.isGoldenQuote,
+    };
+  }
+  const diff = score.ours - score.theirs;
+  if (diff <= -2) return { emotion: "devastated", intensity: 3, isGoldenQuote: false };
+  if (diff >= 2) return { emotion: "ecstasy", intensity: 3, isGoldenQuote: false };
+  return { emotion: "calm", intensity: 2, isGoldenQuote: false };
 }
 
 function Match() {
@@ -187,6 +228,8 @@ function Match() {
   const [effect, setEffect] = useState<{ id: number; emotion: EmotionLabel } | null>(null);
   const [running, setRunning] = useState(true);
   const [eventIdx, setEventIdx] = useState(0);
+  const [replying, setReplying] = useState(false);
+  const [inputMode, setInputMode] = useState<"text" | "voice">("text");
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastInputTime = useRef(Date.now());
   const effectIdRef = useRef(0);
@@ -345,29 +388,70 @@ function Match() {
     }, 500);
   }
 
-  function send(textOverride?: string) {
+  async function send(textOverride?: string) {
     const text = (textOverride ?? input).trim();
-    if (!text) return;
+    if (!text || replying) return;
     lastInputTime.current = Date.now();
     const minute = useAppStore.getState().matchMinute;
-    setMsgs((cur) => [...cur, { id: uid(), role: "user", text, minute }]);
+    const curScore = useAppStore.getState().score;
+    const nextMsgs: ChatMsg[] = [...msgs, { id: uid(), role: "user", text, minute }];
+    setMsgs(nextMsgs);
     setInput("");
+    setReplying(true);
 
-    const reply = buildUserFeedback(text, minute, useAppStore.getState().score, lastEventText);
+    const affect = inferUserReplyAffect(text, curScore);
 
-    setTimeout(() => {
+    try {
+      // 只把最近 8 条搭子/用户对话喂给 LLM；系统事件由 system prompt 概括。
+      const history: ChatMessage[] = nextMsgs
+        .filter((m) => m.role !== "system")
+        .slice(-8)
+        .map<ChatMessage>((m) => ({
+          role: m.role === "agent" ? "assistant" : "user",
+          content: m.text,
+        }));
+
+      const systemContent = buildLiveMatchSystemPrompt(profile, {
+        ourTeam: team,
+        opponent: "JDG",
+        minute,
+        score: curScore,
+        lastEventText,
+      });
+
+      const { reply } = await chatCompletion({
+        data: { messages: [{ role: "system", content: systemContent }, ...history] },
+      });
+
+      const finalText = reply || "（搭子卡壳了，再喊一句？）";
       pushAgent(
-        reply.text,
-        reply.emotion,
-        reply.intensity,
-        !!reply.isGoldenQuote,
+        finalText,
+        affect.emotion,
+        affect.intensity,
+        affect.isGoldenQuote,
         lastEventText,
         undefined,
         undefined,
         undefined,
         text,
       );
-    }, 600);
+    } catch {
+      // API 挂了就用兜底文案，至少别让赛中体验断掉。
+      const fallback = buildUserFeedbackFallback(text, minute, curScore, lastEventText);
+      pushAgent(
+        fallback.text,
+        fallback.emotion,
+        fallback.intensity,
+        !!fallback.isGoldenQuote,
+        lastEventText,
+        undefined,
+        undefined,
+        undefined,
+        text,
+      );
+    } finally {
+      setReplying(false);
+    }
   }
 
   const goldenCount = msgs.filter((m) => m.golden).length;
@@ -484,28 +568,55 @@ function Match() {
                 key={choice}
                 type="button"
                 onClick={() => send(choice)}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-white/5 px-3 py-1.5 text-xs text-foreground transition hover:border-accent/70 hover:bg-accent/10"
+                disabled={replying}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-white/5 px-3 py-1.5 text-xs text-foreground transition hover:border-accent/70 hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <MessageCircle className="h-3.5 w-3.5 shrink-0 text-primary" />
                 <span className="truncate">{choice}</span>
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder={
-                matchEnded
-                  ? "比赛结束了，还能和搭子复盘、吐槽、庆祝…"
-                  : "和搭子聊点啥… 试试 '稳' / '崩' / '菜'"
-              }
-              className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent"
-            />
-            <NeonButton variant="accent" onClick={() => send()} disabled={!input.trim()}>
-              <Send className="h-4 w-4" />
-            </NeonButton>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setInputMode((m) => (m === "text" ? "voice" : "text"))}
+              disabled={replying}
+              title={inputMode === "text" ? "切换到语音输入" : "切换到键盘输入"}
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-border bg-white/5 transition hover:border-accent/70 hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {inputMode === "text" ? (
+                <Mic className="h-5 w-5" />
+              ) : (
+                <Keyboard className="h-5 w-5" />
+              )}
+            </button>
+            {inputMode === "text" ? (
+              <>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && send()}
+                  placeholder={
+                    replying
+                      ? "搭子正在码字…"
+                      : matchEnded
+                        ? "比赛结束了，还能和搭子复盘、吐槽、庆祝…"
+                        : "和搭子聊点啥… 试试 '稳' / '崩' / '菜'"
+                  }
+                  disabled={replying}
+                  className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent disabled:opacity-60"
+                />
+                <NeonButton
+                  variant="accent"
+                  onClick={() => send()}
+                  disabled={!input.trim() || replying}
+                >
+                  <Send className="h-4 w-4" />
+                </NeonButton>
+              </>
+            ) : (
+              <MicButton variant="bar" onTranscribe={(text) => send(text)} disabled={replying} />
+            )}
           </div>
         </div>
 

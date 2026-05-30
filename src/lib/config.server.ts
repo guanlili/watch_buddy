@@ -19,8 +19,10 @@ import process from "node:process";
 export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
-    // Add server-only values here, e.g.:
-    //   databaseUrl: process.env.DATABASE_URL,
-    //   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    tokendanceApiKey: process.env.TOKENDANCE_API_KEY,
+    tokendanceModel: process.env.TOKENDANCE_MODEL ?? "deepseek-v3.2",
+    tokendanceBaseUrl: process.env.TOKENDANCE_BASE_URL ?? "https://tokendance.space/gateway",
+    stepApiKey: process.env.STEP_API_KEY,
+    stepBaseUrl: process.env.STEP_BASE_URL ?? "https://api.stepfun.com",
   };
 }

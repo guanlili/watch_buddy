@@ -6,8 +6,10 @@ import { NeonButton } from "@/components/NeonButton";
 import { useAppStore } from "@/lib/mock/store";
 import { getRecommendedMatches } from "@/lib/mock/recommended-matches";
 import type { RecommendedMatch, Tournament } from "@/lib/mock/types";
-import { TOURNAMENTS } from "@/lib/mock/types";
-import { Send, Play, Clock, Swords, ArrowLeft } from "lucide-react";
+import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
+import { buildBuddySystemPrompt } from "@/lib/prompts/buddy";
+import { MicButton } from "@/components/MicButton";
+import { Send, Play, Clock, Swords, ArrowLeft, Keyboard, Mic } from "lucide-react";
 
 export const Route = createFileRoute("/chat")({
   head: () => ({ meta: [{ title: "毒奶观察室 · 聊天" }] }),
@@ -27,8 +29,10 @@ function Chat() {
   const profile = useAppStore((s) => s.profile);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [inputMode, setInputMode] = useState<"text" | "voice">("text");
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   // 根据用户档案获取推荐赛事
   const recommendedMatches = profile ? getRecommendedMatches(profile) : [];
 
@@ -38,7 +42,7 @@ function Chat() {
       nav({ to: "/onboarding" });
       return;
     }
-    
+
     // 添加欢迎消息
     const welcomeMsg: ChatMsg = {
       id: uid(),
@@ -53,39 +57,37 @@ function Chat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
 
-  function send(textOverride?: string) {
+  async function send(textOverride?: string) {
     const text = (textOverride ?? input).trim();
-    if (!text) return;
-    
-    // 添加用户消息
-    const userMsg: ChatMsg = {
-      id: uid(),
-      role: "user",
-      text,
-    };
-    setMsgs((cur) => [...cur, userMsg]);
-    setInput("");
+    if (!text || loading) return;
 
-    // 模拟AI回复
-    setTimeout(() => {
-      let replyText = "好嘞！这就帮你盯着这场，有精彩操作我第一时间喊你！";
-      
-      // 根据用户输入做简单的回应
-      if (text.includes("KPL") || text.includes("王者荣耀")) {
-        replyText = "KPL我熟！今天的比赛都很有看头，需要我帮你重点盯哪场不？";
-      } else if (text.includes("LPL") || text.includes("英雄联盟")) {
-        replyText = "LPL这赛季太精彩了！我已经准备好速效救心丸了！";
-      } else if (text.includes("VCT") || text.includes("无畏契约")) {
-        replyText = "VCT的比赛节奏就是快！咱一起看一起喊！";
-      }
-      
+    const userMsg: ChatMsg = { id: uid(), role: "user", text };
+    const nextMsgs = [...msgs, userMsg];
+    setMsgs(nextMsgs);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const history: ChatMessage[] = [
+        { role: "system", content: buildBuddySystemPrompt(profile) },
+        ...nextMsgs.map<ChatMessage>((m) => ({
+          role: m.role === "agent" ? "assistant" : "user",
+          content: m.text,
+        })),
+      ];
+      const { reply } = await chatCompletion({ data: { messages: history } });
       const agentMsg: ChatMsg = {
         id: uid(),
         role: "agent",
-        text: replyText,
+        text: reply || "（搭子卡壳了，再说一遍？）",
       };
       setMsgs((cur) => [...cur, agentMsg]);
-    }, 600);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setMsgs((cur) => [...cur, { id: uid(), role: "agent", text: `搭子掉线了：${detail}` }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // 点击推荐赛事
@@ -99,14 +101,20 @@ function Chat() {
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <Link to="/welcome-card" className="flex items-center gap-1 text-xs font-display uppercase tracking-wider text-muted-foreground hover:text-accent">
+          <Link
+            to="/welcome-card"
+            className="flex items-center gap-1 text-xs font-display uppercase tracking-wider text-muted-foreground hover:text-accent"
+          >
             <ArrowLeft className="h-3.5 w-3.5" />
             返回
           </Link>
           <div className="font-display text-xs uppercase tracking-[0.3em] text-accent">
             E SPORTS · AI · BUDDY
           </div>
-          <Link to="/pre-match" className="flex items-center gap-1 text-xs font-display uppercase tracking-wider text-muted-foreground hover:text-accent">
+          <Link
+            to="/pre-match"
+            className="flex items-center gap-1 text-xs font-display uppercase tracking-wider text-muted-foreground hover:text-accent"
+          >
             赛前阵地
             <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
           </Link>
@@ -122,6 +130,7 @@ function Chat() {
               {msgs.map((m) => (
                 <Bubble key={m.id} msg={m} />
               ))}
+              {loading && <TypingBubble key="__typing" />}
             </AnimatePresence>
           </div>
         </div>
@@ -166,7 +175,7 @@ function Chat() {
               </motion.button>
             ))}
           </div>
-          
+
           {/* 直接进赛场按钮 */}
           <div className="mt-4">
             <NeonButton variant="ember" size="lg" onClick={() => nav({ to: "/pre-match" })}>
@@ -178,21 +187,65 @@ function Chat() {
 
         {/* Input */}
         <div className="mt-4 rounded-2xl border border-border/60 bg-white/[0.03] p-3">
-          <div className="flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="和搭子聊点啥…"
-              className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent"
-            />
-            <NeonButton variant="accent" onClick={() => send()} disabled={!input.trim()}>
-              <Send className="h-4 w-4" />
-            </NeonButton>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setInputMode((m) => (m === "text" ? "voice" : "text"))}
+              disabled={loading}
+              title={inputMode === "text" ? "切换到语音输入" : "切换到键盘输入"}
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-border bg-white/5 transition hover:border-accent/70 hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {inputMode === "text" ? (
+                <Mic className="h-5 w-5" />
+              ) : (
+                <Keyboard className="h-5 w-5" />
+              )}
+            </button>
+            {inputMode === "text" ? (
+              <>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && send()}
+                  placeholder={loading ? "搭子正在码字…" : "和搭子聊点啥…"}
+                  disabled={loading}
+                  className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent disabled:opacity-60"
+                />
+                <NeonButton
+                  variant="accent"
+                  onClick={() => send()}
+                  disabled={!input.trim() || loading}
+                >
+                  <Send className="h-4 w-4" />
+                </NeonButton>
+              </>
+            ) : (
+              <MicButton variant="bar" onTranscribe={(text) => send(text)} disabled={loading} />
+            )}
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function TypingBubble() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="flex items-end gap-2"
+    >
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/40">🐶</div>
+      <div className="glass neon-border-primary rounded-2xl px-4 py-2.5">
+        <div className="flex gap-1">
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.3s]"></span>
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:-0.15s]"></span>
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent"></span>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -221,7 +274,7 @@ function Bubble({ msg }: { msg: ChatMsg }) {
 function getMatchTimeText(startTime: number): string {
   const now = Date.now();
   const diff = startTime - now;
-  
+
   if (diff < 0) {
     const minutesAgo = Math.floor(-diff / (60 * 1000));
     if (minutesAgo < 60) {
