@@ -1,15 +1,33 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/lib/mock/store";
 import { TOURNAMENTS } from "@/lib/mock/types";
 import { GlassCard } from "@/components/GlassCard";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
-import { BarChart3, Copy, Images, Quote, Share2, Sparkles, Trophy } from "lucide-react";
+import { generatePoster } from "@/lib/api/image.functions";
+import { chatCompletion } from "@/lib/api/chat.functions";
+import { buildPosterPrompt, type PosterContext, type PosterVariant } from "@/lib/prompts/poster";
+import {
+  buildPostMatchCopyPrompt,
+  type CopyResult,
+  type OutputScenario,
+  type PostMatchCopyContext,
+} from "@/lib/prompts/post-match-copy";
+import {
+  BarChart3,
+  Copy,
+  Images,
+  Loader2,
+  Quote,
+  RefreshCw,
+  Share2,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/post-match")({
   head: () => ({ meta: [{ title: "毒奶观察室 · 赛后图文" }] }),
@@ -46,8 +64,73 @@ function PostMatch() {
 
   const team = getTeamName();
 
-  const [selectedPoster, setSelectedPoster] = useState<0 | 1 | 2>(0);
+  // 从 profile 取本命选手与同队队友列表作为快捷推荐。
+  const initialPlayer = useMemo(() => {
+    if (!profile) return "";
+    const tour = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    const t = tour?.teams.find((x) => x.id === profile.team);
+    const p = t?.players.find((x) => x.id === profile.player);
+    return p?.name ?? profile.customPlayer ?? "";
+  }, [profile]);
+  const teammatePlayers = useMemo(() => {
+    if (!profile) return [] as string[];
+    const tour = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    const t = tour?.teams.find((x) => x.id === profile.team);
+    return t?.players.map((p) => p.name) ?? [];
+  }, [profile]);
+  // 按主追赛事给游戏角色一个 placeholder 提示。
+  const characterPlaceholder = useMemo(() => {
+    switch (profile?.tournament) {
+      case "kpl":
+        return "如：鲁班七号 / 后裔 / 公孙离…";
+      case "lpl":
+        return "如：劫 / 卡莎 / 阿狸…";
+      case "vct":
+        return "如：Jett / Sage / Phoenix…";
+      default:
+        return "选手在赛场上用的英雄 / 角色";
+    }
+  }, [profile]);
+
+  const [selectedPoster, setSelectedPoster] = useState<PosterVariant>(0);
   const [tier, setTier] = useState<"light" | "deep">("light");
+  // 用户配置：选手 / 游戏角色 / 想表达的话。
+  const [playerName, setPlayerName] = useState(initialPlayer);
+  const [gameCharacter, setGameCharacter] = useState("");
+  const [userExpression, setUserExpression] = useState("");
+  // 海报缓存：每个变体单独跟踪 url / loading / error，避免重复调 API。
+  const [posterCache, setPosterCache] = useState<
+    Record<PosterVariant, { loading: boolean; url?: string; error?: string }>
+  >({
+    0: { loading: false },
+    1: { loading: false },
+    2: { loading: false },
+  });
+
+  // 配置一变就把所有缓存的海报作废——之前那张是按旧配置生成的，留着会让用户困惑。
+  const configSig = `${playerName}|${gameCharacter}|${userExpression}`;
+  const lastSigRef = useRef(configSig);
+  useEffect(() => {
+    if (lastSigRef.current !== configSig) {
+      lastSigRef.current = configSig;
+      setPosterCache({ 0: { loading: false }, 1: { loading: false }, 2: { loading: false } });
+    }
+  }, [configSig]);
+
+  // 文案缓存：朋友圈 / 官方社媒 各一份。切换 tier 时若没生成过就自动调一次。
+  const [copyCache, setCopyCache] = useState<
+    Record<"light" | "deep", { loading: boolean; text?: string; error?: string }>
+  >({
+    light: { loading: false },
+    deep: { loading: false },
+  });
+  useEffect(() => {
+    const c = copyCache[tier];
+    if (!c.text && !c.loading && !c.error) {
+      void generateCopy(tier);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier]);
 
   const goldenQuotes = useMemo(
     () => logs.filter((l) => l.isGoldenQuote && l.agentResponse).slice(0, 5),
@@ -81,27 +164,114 @@ function PostMatch() {
     );
   }
 
-  const lightCopy = goldenQuotes[0]?.agentResponse ?? `${team} 这把不容易，反正我吐槽完了。`;
-  const deepCopy = `【${team} ${finalResult === "win" ? "胜" : finalResult === "loss" ? "负" : "平"} JDG · ${score.ours}-${score.theirs}】
-
-赛前我赌 ${team} 拿一血塔，${flags.find((f) => f.content.includes("一血塔"))?.status === "hit" ? "押中了" : "翻车了"}。
-中期那波 0换4 直接给我看破防，AD 站位站到对面脸上去了。
-但是 ${finalResult === "win" ? "那波偷家真的封神，电竞没有早知道，只有真情实感。" : "结局是结局，我的态度不变。"}
+  // 兜底文案：API 失败时显示，确保页面不空。
+  const fallbackLightCopy =
+    goldenQuotes[0]?.agentResponse ?? `${team} 这把不容易，反正我吐槽完了。`;
+  const fallbackDeepCopy = `【${team} ${finalResult === "win" ? "胜" : finalResult === "loss" ? "负" : "平"} JDG · ${score.ours}-${score.theirs}】
 
 最帅的瞬间：${peaks[0]?.eventDescription ?? "全程都帅"}
 最破防瞬间：${peaks.find((p) => p.emotion === "devastated")?.eventDescription ?? "无"}
 
-#${team} #毒奶观察室 #英雄联盟`;
+#${team} #毒奶观察室`;
 
-  const copyText = tier === "light" ? lightCopy : deepCopy;
+  function buildCopyContext(): PostMatchCopyContext | null {
+    if (!profile) return null;
+    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
+    const competitionName = tournament?.name ?? profile.customTournament ?? "电竞赛事";
+
+    // 情绪烈度：所有 log 的强度（1-5）取均值再乘 2 → 0-10。
+    const avgIntensity =
+      logs.length > 0 ? logs.reduce((s, l) => s + l.intensity, 0) / logs.length : 0;
+    const emotionIntensity = Math.min(10, Math.round(avgIntensity * 2));
+
+    const peakLog = peaks[0];
+    const userFlag = flags.find((f) => f.creator === "user");
+    const result: CopyResult =
+      finalResult === "loss" ? "lose" : finalResult === "win" ? "win" : "draw";
+
+    return {
+      teamName: team,
+      fanType: profile.fanType,
+      emotionIntensity,
+      competitionName,
+      homeTeam: team,
+      awayTeam: "JDG",
+      homeScore: score.ours,
+      awayScore: score.theirs,
+      result,
+      keyEvent: peakLog?.eventDescription ?? "全场拉锯，节奏起伏不断",
+      peakMinute: peakLog?.matchMinute ?? 0,
+      preMatchExpectation: userFlag?.content ?? "看主队稳定发挥，争取拿下这一分",
+      userQuote: userQuotes[0] ?? goldenQuotes[0]?.agentResponse ?? "",
+      emotionType: peakLog ? EMOTION_MAP[peakLog.emotion].label : "紧张",
+    };
+  }
+
+  async function generateCopy(t: "light" | "deep") {
+    const ctx = buildCopyContext();
+    if (!ctx) {
+      toast.error("用户档案缺失，请先去新手引导填一下。");
+      return;
+    }
+    setCopyCache((cur) => ({ ...cur, [t]: { loading: true } }));
+    try {
+      const scenario: OutputScenario = t === "light" ? "friend_circle" : "official_social";
+      const systemPrompt = buildPostMatchCopyPrompt(scenario, ctx);
+      const { reply } = await chatCompletion({
+        data: {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "请按上面要求直接生成文案本体，不要任何前缀、标题或解释。" },
+          ],
+          temperature: 0.85,
+        },
+      });
+      setCopyCache((cur) => ({ ...cur, [t]: { loading: false, text: reply.trim() } }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setCopyCache((cur) => ({ ...cur, [t]: { loading: false, error: msg } }));
+      toast.error(`文案生成失败：${msg}`);
+    }
+  }
+
+  const cachedCopy = copyCache[tier];
+  const copyText = cachedCopy.text ?? (tier === "light" ? fallbackLightCopy : fallbackDeepCopy);
 
   function doCopy() {
     navigator.clipboard.writeText(copyText).then(() => toast.success("文案已复制，去贴朋友圈！"));
   }
 
+  function posterContext(v: PosterVariant): PosterContext {
+    const safe = (arr: typeof goldenQuotes, i: number) =>
+      arr[i % Math.max(1, arr.length)]?.agentResponse;
+    return {
+      team,
+      opponent: "JDG",
+      score,
+      finalResult: finalResult as "win" | "loss" | "draw" | null,
+      goldenQuote: safe(goldenQuotes, v),
+      userQuote: userQuotes[v % Math.max(1, userQuotes.length)],
+      playerName: playerName.trim() || undefined,
+      gameCharacter: gameCharacter.trim() || undefined,
+      userExpression: userExpression.trim() || undefined,
+    };
+  }
+
+  async function generateForVariant(v: PosterVariant) {
+    setPosterCache((cur) => ({ ...cur, [v]: { loading: true } }));
+    try {
+      const prompt = buildPosterPrompt(v, posterContext(v));
+      const { url } = await generatePoster({ data: { prompt } });
+      setPosterCache((cur) => ({ ...cur, [v]: { loading: false, url } }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setPosterCache((cur) => ({ ...cur, [v]: { loading: false, error: msg } }));
+      toast.error(`海报生成失败：${msg}`);
+    }
+  }
+
   return (
     <main className="relative min-h-screen px-4 py-10">
-      <Toaster richColors position="top-center" />
       <div className="mx-auto max-w-4xl">
         <Link
           to="/match"
@@ -168,29 +338,176 @@ function PostMatch() {
         {/* Posters */}
         <div className="mt-6">
           <div className="mb-3 font-display text-sm uppercase tracking-wider">
-            个性化海报（三选一）
+            个性化海报（配置后生成）
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedPoster(i as 0 | 1 | 2)}
-                className={`overflow-hidden rounded-2xl transition ${selectedPoster === i ? "ring-2 ring-accent neon-border-accent" : "ring-1 ring-border"}`}
-              >
-                <Poster
-                  variant={i as 0 | 1 | 2}
-                  team={team}
-                  score={score}
-                  finalResult={finalResult}
-                  goldenQuote={
-                    goldenQuotes[i % Math.max(1, goldenQuotes.length)]?.agentResponse ??
-                    userQuotes[0] ??
-                    "电竞真好"
-                  }
-                  userQuote={userQuotes[i % Math.max(1, userQuotes.length)] ?? "稳了"}
+
+          {/* 配置卡片 */}
+          <GlassCard glow="primary" className="!p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
+                  选手
+                </label>
+                <input
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="海报 C 位的选手 ID"
+                  className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
                 />
-              </button>
-            ))}
+                {teammatePlayers.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {teammatePlayers.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setPlayerName(name)}
+                        className={`rounded-full border px-2 py-0.5 text-[11px] transition ${
+                          playerName === name
+                            ? "border-accent bg-accent/20 text-accent"
+                            : "border-border bg-white/5 hover:border-accent/70"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
+                  游戏角色
+                </label>
+                <input
+                  value={gameCharacter}
+                  onChange={(e) => setGameCharacter(e.target.value)}
+                  placeholder={characterPlaceholder}
+                  className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
+                />
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  会画出该角色的外观、武器、技能特效。
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
+                  你想说的话 <span className="text-muted-foreground/60">(海报底部标语)</span>
+                </label>
+                <textarea
+                  value={userExpression}
+                  onChange={(e) => setUserExpression(e.target.value)}
+                  placeholder="留空就用搭子的金句"
+                  rows={2}
+                  className="w-full resize-none rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
+                  maxLength={64}
+                />
+                <div className="mt-1 text-right text-[10px] text-muted-foreground">
+                  {userExpression.length} / 64
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* 风格三选一 */}
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {([0, 1, 2] as const).map((i) => {
+              const cache = posterCache[i];
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedPoster(i)}
+                  className={`relative overflow-hidden rounded-2xl transition ${selectedPoster === i ? "ring-2 ring-accent neon-border-accent" : "ring-1 ring-border"}`}
+                >
+                  <Poster
+                    variant={i}
+                    team={team}
+                    score={score}
+                    finalResult={finalResult}
+                    goldenQuote={
+                      goldenQuotes[i % Math.max(1, goldenQuotes.length)]?.agentResponse ??
+                      userQuotes[0] ??
+                      "电竞真好"
+                    }
+                    userQuote={userQuotes[i % Math.max(1, userQuotes.length)] ?? "稳了"}
+                    generatedUrl={cache.url}
+                  />
+                  {cache.loading && (
+                    <div className="absolute inset-0 grid place-items-center bg-black/60 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2 text-accent">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <div className="font-display text-xs uppercase tracking-widest">
+                          AI 出片中…
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!cache.url && !cache.loading && !cache.error && (
+                    <div className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      预览
+                    </div>
+                  )}
+                  {!cache.loading && cache.error && (
+                    <div className="absolute inset-x-2 bottom-2 rounded-lg bg-destructive/80 px-2 py-1.5 text-center text-[10px]">
+                      <div>生成失败</div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void generateForVariant(i);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void generateForVariant(i);
+                          }
+                        }}
+                        className="mt-1 inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 hover:bg-white/30"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        重试
+                      </span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 生成主按钮 */}
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              已选风格：
+              <span className="ml-1 text-accent">
+                {selectedPoster === 0 ? "荣耀叙事" : selectedPoster === 1 ? "吐槽梗图" : "复盘理性"}
+              </span>
+              {posterCache[selectedPoster].url && (
+                <span className="ml-2 text-muted-foreground/70">(已生成，可重新生成)</span>
+              )}
+            </div>
+            <NeonButton
+              variant="accent"
+              size="lg"
+              onClick={() => void generateForVariant(selectedPoster)}
+              disabled={posterCache[selectedPoster].loading}
+            >
+              {posterCache[selectedPoster].loading ? (
+                <>
+                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                  AI 出片中…
+                </>
+              ) : posterCache[selectedPoster].url ? (
+                <>
+                  <RefreshCw className="mr-2 inline h-4 w-4" />
+                  重新生成
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 inline h-4 w-4" />
+                  AI 生成海报
+                </>
+              )}
+            </NeonButton>
           </div>
         </div>
 
@@ -210,15 +527,47 @@ function PostMatch() {
               ))}
             </div>
           </div>
-          <pre className="whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-relaxed">
-            {copyText}
-          </pre>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="relative rounded-xl bg-black/30">
+            <pre className="whitespace-pre-wrap p-4 font-sans text-sm leading-relaxed">
+              {copyText}
+            </pre>
+            {cachedCopy.loading && (
+              <div className="absolute inset-0 grid place-items-center rounded-xl bg-black/60 backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-accent">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="font-display text-xs uppercase tracking-widest">AI 落笔中…</span>
+                </div>
+              </div>
+            )}
+            {!cachedCopy.loading && cachedCopy.error && (
+              <div className="absolute right-2 top-2 rounded-lg bg-destructive/70 px-2 py-1 text-[10px]">
+                生成失败，已显示兜底
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <NeonButton variant="accent" onClick={doCopy}>
               <Copy className="mr-1 inline h-4 w-4" />
               复制文案
             </NeonButton>
-            <NeonButton variant="primary">
+            <NeonButton
+              variant="primary"
+              onClick={() => void generateCopy(tier)}
+              disabled={cachedCopy.loading}
+            >
+              {cachedCopy.loading ? (
+                <>
+                  <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />
+                  生成中
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-1 inline h-4 w-4" />
+                  重新生成
+                </>
+              )}
+            </NeonButton>
+            <NeonButton variant="ghost">
               <Share2 className="mr-1 inline h-4 w-4" />
               一键分享
             </NeonButton>
@@ -389,6 +738,7 @@ function Poster({
   finalResult,
   goldenQuote,
   userQuote,
+  generatedUrl,
 }: {
   variant: 0 | 1 | 2;
   team: string;
@@ -396,6 +746,7 @@ function Poster({
   finalResult: string | null;
   goldenQuote: string;
   userQuote: string;
+  generatedUrl?: string;
 }) {
   const styles = [
     {
@@ -415,6 +766,22 @@ function Poster({
     },
   ];
   const s = styles[variant];
+  // 有 AI 生成图就用 AI 图，否则降级到原渐变假图作为骨架/占位。
+  if (generatedUrl) {
+    return (
+      <div className="relative aspect-[4/5] overflow-hidden">
+        <img
+          src={generatedUrl}
+          alt={`${s.name} · ${team} ${score.ours}-${score.theirs}`}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-[9px] uppercase tracking-widest text-white/80">
+          {s.name} · 毒奶观察室
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="relative aspect-[4/5] overflow-hidden p-4 text-left"

@@ -35,3 +35,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Archive files
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+*.gz
