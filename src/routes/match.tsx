@@ -22,8 +22,10 @@ import { EffectOverlay } from "@/components/EffectOverlay";
 import { GlassCard } from "@/components/GlassCard";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
+import { ErrorState } from "@/components/StatusOverlay";
 import {
   Activity,
+  Gauge,
   Flame,
   Keyboard,
   Lightbulb,
@@ -53,6 +55,13 @@ interface ChatMsg {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
+const DEFAULT_REPLAY_SPEED = SECONDS_PER_REAL_SECOND;
+const REPLAY_SPEED_OPTIONS = [
+  { label: "慢速", value: 1 },
+  { label: "标准", value: 2 },
+  { label: "演示", value: 3 },
+  { label: "快进", value: 5 },
+] as const;
 
 type AgentReply = {
   text: string;
@@ -63,6 +72,23 @@ type AgentReply = {
 
 function pickOne<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function getInitialReplaySpeed() {
+  if (typeof window === "undefined") return DEFAULT_REPLAY_SPEED;
+  const raw = Number(new URLSearchParams(window.location.search).get("speed"));
+  return REPLAY_SPEED_OPTIONS.some((option) => option.value === raw) ? raw : DEFAULT_REPLAY_SPEED;
+}
+
+function updateReplaySpeedSearch(speed: number) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (speed === DEFAULT_REPLAY_SPEED) {
+    url.searchParams.delete("speed");
+  } else {
+    url.searchParams.set("speed", String(speed));
+  }
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function buildPromptChoices(
@@ -232,6 +258,8 @@ function Match() {
   const [eventIdx, setEventIdx] = useState(0);
   const [replying, setReplying] = useState(false);
   const [inputMode, setInputMode] = useState<"text" | "voice">("text");
+  const [replaySpeed, setReplaySpeed] = useState(getInitialReplaySpeed);
+  const [agentNotice, setAgentNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastInputTime = useRef(Date.now());
   const effectIdRef = useRef(0);
@@ -258,10 +286,10 @@ function Match() {
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
-      setMatchMinute(Math.min(MATCH_DURATION_MINUTES, matchMinute + SECONDS_PER_REAL_SECOND));
+      setMatchMinute(Math.min(MATCH_DURATION_MINUTES, matchMinute + replaySpeed));
     }, 1000);
     return () => clearInterval(t);
-  }, [running, matchMinute, setMatchMinute]);
+  }, [running, matchMinute, replaySpeed, setMatchMinute]);
 
   // Trigger timeline events
   useEffect(() => {
@@ -426,6 +454,7 @@ function Match() {
       });
 
       const finalText = reply || "（搭子卡壳了，再喊一句？）";
+      setAgentNotice(null);
       pushAgent(
         finalText,
         affect.emotion,
@@ -440,6 +469,7 @@ function Match() {
     } catch {
       // API 挂了就用兜底文案，至少别让赛中体验断掉。
       const fallback = buildUserFeedbackFallback(text, minute, curScore, lastEventText);
+      setAgentNotice("AI 连接不稳，已切换成本地兜底陪聊。");
       pushAgent(
         fallback.text,
         fallback.emotion,
@@ -458,23 +488,28 @@ function Match() {
 
   const goldenCount = msgs.filter((m) => m.golden).length;
 
+  function changeReplaySpeed(speed: number) {
+    setReplaySpeed(speed);
+    updateReplaySpeedSearch(speed);
+  }
+
   return (
-    <main className="relative min-h-screen px-4 py-6">
+    <main className="relative min-h-screen px-3 py-4 sm:px-4 sm:py-6">
       <EffectOverlay trigger={effect} />
 
       <div className="mx-auto max-w-3xl">
         <Link
           to="/pre-match"
-          className="font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent"
+          className="hidden font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent sm:inline"
         >
           ← 暂离
         </Link>
 
-        <div className="mt-3">
+        <div className="mt-2 hidden sm:block">
           <MatchStageRail current="live" />
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
+        <div className="mt-4 hidden gap-3 sm:grid sm:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] p-4">
             <div className="flex items-center gap-2 font-display text-xs uppercase tracking-[0.3em] text-accent">
               <Radio className="h-4 w-4 animate-pulse" />
@@ -498,19 +533,21 @@ function Match() {
         </div>
 
         {/* Scoreboard */}
-        <GlassCard glow="primary" className="mt-3 !p-4">
+        <GlassCard glow="primary" className="mt-0 !p-3 sm:mt-3 sm:!p-4">
           <div className="grid grid-cols-3 items-center gap-2">
             <div className="text-center">
               <div className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">
                 {team}
               </div>
-              <div className="font-mono text-4xl font-bold glow-text-accent">{score.ours}</div>
+              <div className="font-mono text-3xl font-bold glow-text-accent sm:text-4xl">
+                {score.ours}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-[10px] font-display uppercase tracking-widest text-accent">
                 {matchEnded ? "比赛结束" : `第 ${matchMinute} 分钟`}
               </div>
-              <div className="font-display text-2xl glow-text-primary">VS</div>
+              <div className="font-display text-xl glow-text-primary sm:text-2xl">VS</div>
               <div className="mt-1 flex justify-center gap-1.5 text-[10px]">
                 <span className="rounded bg-accent/20 px-1.5 py-0.5 font-mono text-accent">
                   🔥 {goldenCount} 金句
@@ -524,7 +561,9 @@ function Match() {
               <div className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">
                 JDG
               </div>
-              <div className="font-mono text-4xl font-bold glow-text-ember">{score.theirs}</div>
+              <div className="font-mono text-3xl font-bold glow-text-ember sm:text-4xl">
+                {score.theirs}
+              </div>
             </div>
           </div>
           {/* progress */}
@@ -534,12 +573,41 @@ function Match() {
               style={{ width: `${(matchMinute / MATCH_DURATION_MINUTES) * 100}%` }}
             />
           </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3">
+            <div className="flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+              <Gauge className="h-3.5 w-3.5 text-accent" />
+              回放速度
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {REPLAY_SPEED_OPTIONS.map((option) => (
+                <Chip
+                  key={option.value}
+                  size="sm"
+                  tone="muted"
+                  selected={replaySpeed === option.value}
+                  onClick={() => changeReplaySpeed(option.value)}
+                >
+                  {option.label} x{option.value}
+                </Chip>
+              ))}
+            </div>
+          </div>
         </GlassCard>
+
+        {agentNotice && (
+          <div className="mt-3">
+            <ErrorState
+              message={agentNotice}
+              retryLabel="知道了"
+              onRetry={() => setAgentNotice(null)}
+            />
+          </div>
+        )}
 
         {/* Chat */}
         <div
           ref={scrollRef}
-          className="scrollbar-thin glass mt-4 h-[55vh] overflow-y-auto rounded-2xl p-4"
+          className="scrollbar-thin glass mt-3 h-[48vh] overflow-y-auto rounded-2xl p-3 sm:mt-4 sm:h-[55vh] sm:p-4"
         >
           <div className="space-y-3">
             <AnimatePresence initial={false}>
@@ -547,6 +615,17 @@ function Match() {
                 <Bubble key={m.id} msg={m} />
               ))}
             </AnimatePresence>
+            {replying && (
+              <div className="flex items-end gap-2">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/40">
+                  🐶
+                </div>
+                <div className="glass rounded-2xl px-4 py-2.5 text-sm text-muted-foreground">
+                  <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
+                  搭子正在组织语言…
+                </div>
+              </div>
+            )}
             {msgs.length === 0 && (
               <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
                 <div>

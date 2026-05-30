@@ -226,16 +226,43 @@ scp watch-buddy.tar user@your-server-ip:/path/to/
 ssh user@your-server-ip
 docker load -i watch-buddy.tar
 docker run -d -p 8037:3000 --name watch-buddy --restart unless-stopped \
+  -e HOST=0.0.0.0 \
+  -e PORT=3000 \
   -e TOKENDANCE_API_KEY=your-key \
   -e STEP_API_KEY=your-key \
   watch-buddy:latest
+
+# 6. 确认容器已启动且健康检查通过
+docker ps --filter name=watch-buddy
+curl -I http://127.0.0.1:8037/match
 ```
 
 #### 本地 Docker 运行
 
 ```bash
-docker build -t watch-buddy .
-docker run -d -p 8037:3000 --name watch-buddy -e TOKENDANCE_API_KEY=your-key -e STEP_API_KEY=your-key watch-buddy
+docker build -t watch-buddy:local .
+docker run -d --name watch-buddy-local -p 18080:3000 \
+  -e HOST=0.0.0.0 \
+  -e PORT=3000 \
+  -e TOKENDANCE_API_KEY=your-key \
+  -e STEP_API_KEY=your-key \
+  watch-buddy:local
+
+docker ps --filter name=watch-buddy-local
+curl -I http://127.0.0.1:18080/match
+```
+
+Dockerfile 内置 `HEALTHCHECK`，容器正常后会显示 `healthy`。如果只想验证 UI，可不传 API Key；聊天、语音、海报、文案生成会走失败兜底或不可用状态。
+
+#### 演示参数
+
+赛中模拟默认是演示速度，可以用 URL 调整：
+
+```txt
+/match?speed=1  # 慢速，1 秒真实时间 = 1 分钟比赛时间
+/match?speed=2  # 标准
+/match          # 默认演示速度 x3
+/match?speed=5  # 快进
 ```
 
 #### 本地启动（非 Docker）
