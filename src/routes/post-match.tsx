@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import { useAppStore } from "@/lib/mock/store";
 import { TOURNAMENTS } from "@/lib/mock/types";
 import { GlassCard } from "@/components/GlassCard";
+import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
-import { Copy, Share2, Sparkles, Trophy } from "lucide-react";
+import { BarChart3, Copy, Images, Quote, Share2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -22,27 +23,27 @@ function PostMatch() {
   const flags = useAppStore((s) => s.flags);
   const finalResult = useAppStore((s) => s.finalResult);
   const nav = useNavigate();
-  
+
   // 获取用户选择的主队名称
   function getTeamName(): string {
     if (!profile) return "TES";
-    
+
     // 如果是自定义的队伍
     if (profile.team === "custom" && profile.customTeam) {
       return profile.customTeam;
     }
-    
+
     // 从TOURNAMENTS中找到对应的队伍
     const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
     if (tournament) {
       const team = tournament.teams.find((t) => t.id === profile.team);
       if (team) return team.name;
     }
-    
+
     // 兜底
     return "TES";
   }
-  
+
   const team = getTeamName();
 
   const [selectedPoster, setSelectedPoster] = useState<0 | 1 | 2>(0);
@@ -53,7 +54,11 @@ function PostMatch() {
     [logs],
   );
   const userQuotes = useMemo(
-    () => logs.filter((l) => l.userInput).map((l) => l.userInput!).filter((q, i, arr) => arr.indexOf(q) === i),
+    () =>
+      logs
+        .filter((l) => l.userInput)
+        .map((l) => l.userInput!)
+        .filter((q, i, arr) => arr.indexOf(q) === i),
     [logs],
   );
   const peaks = logs.filter((l) => l.isPeak);
@@ -64,8 +69,12 @@ function PostMatch() {
         <GlassCard glow="primary" className="max-w-md text-center">
           <p>还没有赛中数据，先看一场比赛吧。</p>
           <div className="mt-4 flex justify-center gap-2">
-            <Link to="/match"><NeonButton variant="accent">去看比赛</NeonButton></Link>
-            <Link to="/"><NeonButton variant="ghost">回大厅</NeonButton></Link>
+            <Link to="/match">
+              <NeonButton variant="accent">去看比赛</NeonButton>
+            </Link>
+            <Link to="/">
+              <NeonButton variant="ghost">回大厅</NeonButton>
+            </Link>
           </div>
         </GlassCard>
       </main>
@@ -94,16 +103,48 @@ function PostMatch() {
     <main className="relative min-h-screen px-4 py-10">
       <Toaster richColors position="top-center" />
       <div className="mx-auto max-w-4xl">
-        <Link to="/match" className="font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent">
+        <Link
+          to="/match"
+          className="font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent"
+        >
           ← 返回赛场
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-3">
-          <div className="font-display text-xs uppercase tracking-[0.3em] text-accent">赛后剧场 · POST-MATCH STUDIO</div>
+          <div className="font-display text-xs uppercase tracking-[0.3em] text-accent">
+            赛后剧场 · POST-MATCH STUDIO
+          </div>
           <h1 className="title-stroke mt-2 text-4xl sm:text-5xl">
-            {finalResult === "win" ? "🏆 这场，归你" : finalResult === "loss" ? "💔 这场，破防" : "🤝 这场，平局"}
+            {finalResult === "win"
+              ? "🏆 这场，归你"
+              : finalResult === "loss"
+                ? "💔 这场，破防"
+                : "🤝 这场，平局"}
           </h1>
         </motion.div>
+
+        <MatchStageRail current="post" className="mt-5" />
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <PostSignal
+            icon={BarChart3}
+            title="情绪归档"
+            value={`${logs.length} 条`}
+            desc="赛中波动沉淀成复盘曲线。"
+          />
+          <PostSignal
+            icon={Quote}
+            title="金句打捞"
+            value={`${goldenQuotes.length} 句`}
+            desc="把最上头的时刻留给社交平台。"
+          />
+          <PostSignal
+            icon={Images}
+            title="海报出片"
+            value="3 款"
+            desc="赢了吹，输了嘴硬，平了讲格局。"
+          />
+        </div>
 
         {/* Emotion curve */}
         <GlassCard glow="primary" className="mt-6">
@@ -112,7 +153,10 @@ function PostMatch() {
             <div className="flex gap-2 text-[10px]">
               {(["ecstasy", "anger", "devastated", "tension", "calm"] as const).map((k) => (
                 <div key={k} className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ background: EMOTION_MAP[k].color }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: EMOTION_MAP[k].color }}
+                  />
                   <span className="text-muted-foreground">{EMOTION_MAP[k].label}</span>
                 </div>
               ))}
@@ -123,7 +167,9 @@ function PostMatch() {
 
         {/* Posters */}
         <div className="mt-6">
-          <div className="mb-3 font-display text-sm uppercase tracking-wider">个性化海报（三选一）</div>
+          <div className="mb-3 font-display text-sm uppercase tracking-wider">
+            个性化海报（三选一）
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {[0, 1, 2].map((i) => (
               <button
@@ -131,7 +177,18 @@ function PostMatch() {
                 onClick={() => setSelectedPoster(i as 0 | 1 | 2)}
                 className={`overflow-hidden rounded-2xl transition ${selectedPoster === i ? "ring-2 ring-accent neon-border-accent" : "ring-1 ring-border"}`}
               >
-                <Poster variant={i as 0 | 1 | 2} team={team} score={score} finalResult={finalResult} goldenQuote={goldenQuotes[i % Math.max(1, goldenQuotes.length)]?.agentResponse ?? userQuotes[0] ?? "电竞真好"} userQuote={userQuotes[i % Math.max(1, userQuotes.length)] ?? "稳了"} />
+                <Poster
+                  variant={i as 0 | 1 | 2}
+                  team={team}
+                  score={score}
+                  finalResult={finalResult}
+                  goldenQuote={
+                    goldenQuotes[i % Math.max(1, goldenQuotes.length)]?.agentResponse ??
+                    userQuotes[0] ??
+                    "电竞真好"
+                  }
+                  userQuote={userQuotes[i % Math.max(1, userQuotes.length)] ?? "稳了"}
+                />
               </button>
             ))}
           </div>
@@ -153,11 +210,21 @@ function PostMatch() {
               ))}
             </div>
           </div>
-          <pre className="whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-relaxed">{copyText}</pre>
+          <pre className="whitespace-pre-wrap rounded-xl bg-black/30 p-4 font-sans text-sm leading-relaxed">
+            {copyText}
+          </pre>
           <div className="mt-3 flex flex-wrap gap-2">
-            <NeonButton variant="accent" onClick={doCopy}><Copy className="mr-1 inline h-4 w-4" />复制文案</NeonButton>
-            <NeonButton variant="primary"><Share2 className="mr-1 inline h-4 w-4" />一键分享</NeonButton>
-            <NeonButton variant="ghost" onClick={() => nav({ to: "/" })}>回大厅</NeonButton>
+            <NeonButton variant="accent" onClick={doCopy}>
+              <Copy className="mr-1 inline h-4 w-4" />
+              复制文案
+            </NeonButton>
+            <NeonButton variant="primary">
+              <Share2 className="mr-1 inline h-4 w-4" />
+              一键分享
+            </NeonButton>
+            <NeonButton variant="ghost" onClick={() => nav({ to: "/" })}>
+              回大厅
+            </NeonButton>
           </div>
         </GlassCard>
 
@@ -170,11 +237,15 @@ function PostMatch() {
             <ul className="space-y-2 text-sm">
               {goldenQuotes.map((q) => (
                 <li key={q.id} className="rounded-lg bg-white/5 p-2">
-                  <div className="text-[10px] font-mono uppercase text-muted-foreground">{q.matchMinute}' · {EMOTION_MAP[q.emotion].label}</div>
+                  <div className="text-[10px] font-mono uppercase text-muted-foreground">
+                    {q.matchMinute}' · {EMOTION_MAP[q.emotion].label}
+                  </div>
                   <div>"{q.agentResponse}"</div>
                 </li>
               ))}
-              {goldenQuotes.length === 0 && <li className="text-muted-foreground">这场没攒下金句</li>}
+              {goldenQuotes.length === 0 && (
+                <li className="text-muted-foreground">这场没攒下金句</li>
+              )}
             </ul>
           </GlassCard>
           <GlassCard>
@@ -183,9 +254,14 @@ function PostMatch() {
             </div>
             <ul className="space-y-2 text-sm">
               {flags.map((f) => (
-                <li key={f.id} className="flex items-center justify-between rounded-lg bg-white/5 p-2">
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between rounded-lg bg-white/5 p-2"
+                >
                   <span>🚩 {f.content}</span>
-                  <span className={`rounded px-2 py-0.5 text-[10px] font-display uppercase ${f.status === "hit" ? "bg-accent/30 text-accent" : f.status === "miss" ? "bg-destructive/30 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                  <span
+                    className={`rounded px-2 py-0.5 text-[10px] font-display uppercase ${f.status === "hit" ? "bg-accent/30 text-accent" : f.status === "miss" ? "bg-destructive/30 text-destructive" : "bg-muted text-muted-foreground"}`}
+                  >
                     {f.status === "hit" ? "✅ 命中" : f.status === "miss" ? "❌ 翻车" : "⏳ 未结"}
                   </span>
                 </li>
@@ -199,9 +275,34 @@ function PostMatch() {
   );
 }
 
+function PostSignal({
+  icon: Icon,
+  title,
+  value,
+  desc,
+}: {
+  icon: typeof BarChart3;
+  title: string;
+  value: string;
+  desc: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-ecstasy/20 bg-ecstasy/[0.06] p-4">
+      <div className="flex items-center gap-2 text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-4 w-4 text-ecstasy" />
+        {title}
+      </div>
+      <div className="mt-2 font-display text-2xl text-ecstasy">{value}</div>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
+    </div>
+  );
+}
+
 function EmotionCurve() {
   const logs = useAppStore((s) => s.logs);
-  const w = 720, h = 180, pad = 30;
+  const w = 720,
+    h = 180,
+    pad = 30;
   if (logs.length === 0) return <div className="text-muted-foreground">无数据</div>;
   const maxMin = Math.max(...logs.map((l) => l.matchMinute), 45);
   const pts = logs.map((l) => ({
@@ -219,8 +320,23 @@ function EmotionCurve() {
           const y = h - pad - ((lvl - 1) / 4) * (h - pad * 2);
           return (
             <g key={lvl}>
-              <line x1={pad} x2={w - pad} y1={y} y2={y} stroke="oklch(1 0 0 / 0.06)" strokeDasharray="2 4" />
-              <text x={4} y={y + 3} fill="oklch(0.7 0.04 280)" fontSize="9" fontFamily="JetBrains Mono">{lvl}</text>
+              <line
+                x1={pad}
+                x2={w - pad}
+                y1={y}
+                y2={y}
+                stroke="oklch(1 0 0 / 0.06)"
+                strokeDasharray="2 4"
+              />
+              <text
+                x={4}
+                y={y + 3}
+                fill="oklch(0.7 0.04 280)"
+                fontSize="9"
+                fontFamily="JetBrains Mono"
+              >
+                {lvl}
+              </text>
             </g>
           );
         })}
@@ -233,41 +349,106 @@ function EmotionCurve() {
           </linearGradient>
         </defs>
         {/* peak dots */}
-        {pts.map((p) => p.log.isPeak && (
-          <g key={p.log.id}>
-            <circle cx={p.x} cy={p.y} r={5} fill={EMOTION_MAP[p.log.emotion].color as string} stroke="white" strokeWidth="1" />
-          </g>
-        ))}
+        {pts.map(
+          (p) =>
+            p.log.isPeak && (
+              <g key={p.log.id}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={5}
+                  fill={EMOTION_MAP[p.log.emotion].color as string}
+                  stroke="white"
+                  strokeWidth="1"
+                />
+              </g>
+            ),
+        )}
         {/* x labels */}
-        <text x={pad} y={h - 8} fill="oklch(0.7 0.04 280)" fontSize="9" fontFamily="JetBrains Mono">0'</text>
-        <text x={w - pad - 10} y={h - 8} fill="oklch(0.7 0.04 280)" fontSize="9" fontFamily="JetBrains Mono">{maxMin}'</text>
+        <text x={pad} y={h - 8} fill="oklch(0.7 0.04 280)" fontSize="9" fontFamily="JetBrains Mono">
+          0'
+        </text>
+        <text
+          x={w - pad - 10}
+          y={h - 8}
+          fill="oklch(0.7 0.04 280)"
+          fontSize="9"
+          fontFamily="JetBrains Mono"
+        >
+          {maxMin}'
+        </text>
       </svg>
     </div>
   );
 }
 
-function Poster({ variant, team, score, finalResult, goldenQuote, userQuote }: { variant: 0 | 1 | 2; team: string; score: { ours: number; theirs: number }; finalResult: string | null; goldenQuote: string; userQuote: string }) {
+function Poster({
+  variant,
+  team,
+  score,
+  finalResult,
+  goldenQuote,
+  userQuote,
+}: {
+  variant: 0 | 1 | 2;
+  team: string;
+  score: { ours: number; theirs: number };
+  finalResult: string | null;
+  goldenQuote: string;
+  userQuote: string;
+}) {
   const styles = [
-    { name: "荣耀叙事", bg: "linear-gradient(135deg, oklch(0.3 0.15 295), oklch(0.15 0.08 230))", accent: "var(--ecstasy)" },
-    { name: "吐槽梗图", bg: "linear-gradient(135deg, oklch(0.25 0.18 30), oklch(0.15 0.05 285))", accent: "var(--anger)" },
-    { name: "复盘理性", bg: "linear-gradient(135deg, oklch(0.18 0.05 200), oklch(0.1 0.03 270))", accent: "var(--accent)" },
+    {
+      name: "荣耀叙事",
+      bg: "linear-gradient(135deg, oklch(0.3 0.15 295), oklch(0.15 0.08 230))",
+      accent: "var(--ecstasy)",
+    },
+    {
+      name: "吐槽梗图",
+      bg: "linear-gradient(135deg, oklch(0.25 0.18 30), oklch(0.15 0.05 285))",
+      accent: "var(--anger)",
+    },
+    {
+      name: "复盘理性",
+      bg: "linear-gradient(135deg, oklch(0.18 0.05 200), oklch(0.1 0.03 270))",
+      accent: "var(--accent)",
+    },
   ];
   const s = styles[variant];
   return (
-    <div className="relative aspect-[4/5] overflow-hidden p-4 text-left" style={{ background: s.bg }}>
-      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full" style={{ background: s.accent, opacity: 0.25, filter: "blur(28px)" }} />
+    <div
+      className="relative aspect-[4/5] overflow-hidden p-4 text-left"
+      style={{ background: s.bg }}
+    >
+      <div
+        className="absolute -right-8 -top-8 h-32 w-32 rounded-full"
+        style={{ background: s.accent, opacity: 0.25, filter: "blur(28px)" }}
+      />
       <div className="relative flex h-full flex-col justify-between">
         <div>
-          <div className="font-display text-[9px] uppercase tracking-widest opacity-70">{s.name}</div>
-          <div className="mt-1 font-display text-2xl font-bold" style={{ color: s.accent }}>{team}</div>
-          <div className="mt-1 font-mono text-3xl font-bold">{score.ours} : {score.theirs}</div>
-          <div className="text-[10px] uppercase tracking-wider opacity-70">vs JDG · {finalResult === "win" ? "WIN" : finalResult === "loss" ? "LOSS" : "DRAW"}</div>
+          <div className="font-display text-[9px] uppercase tracking-widest opacity-70">
+            {s.name}
+          </div>
+          <div className="mt-1 font-display text-2xl font-bold" style={{ color: s.accent }}>
+            {team}
+          </div>
+          <div className="mt-1 font-mono text-3xl font-bold">
+            {score.ours} : {score.theirs}
+          </div>
+          <div className="text-[10px] uppercase tracking-wider opacity-70">
+            vs JDG · {finalResult === "win" ? "WIN" : finalResult === "loss" ? "LOSS" : "DRAW"}
+          </div>
         </div>
         <div>
-          <div className="rounded-lg border-l-2 px-2 py-1 text-xs italic" style={{ borderColor: s.accent }}>
+          <div
+            className="rounded-lg border-l-2 px-2 py-1 text-xs italic"
+            style={{ borderColor: s.accent }}
+          >
             "{(variant === 1 ? userQuote : goldenQuote).slice(0, 36)}"
           </div>
-          <div className="mt-2 text-[9px] uppercase tracking-widest opacity-50">毒奶观察室 · 个人专属</div>
+          <div className="mt-2 text-[9px] uppercase tracking-widest opacity-50">
+            毒奶观察室 · 个人专属
+          </div>
         </div>
       </div>
     </div>

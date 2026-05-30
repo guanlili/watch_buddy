@@ -15,8 +15,9 @@ import type { EmotionLabel, EmotionLogEntry } from "@/lib/mock/types";
 import { TOURNAMENTS } from "@/lib/mock/types";
 import { EffectOverlay } from "@/components/EffectOverlay";
 import { GlassCard } from "@/components/GlassCard";
+import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
-import { Flame, Lightbulb, MessageCircle, Send, Trophy } from "lucide-react";
+import { Activity, Flame, Lightbulb, MessageCircle, Radio, Send, Trophy, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/match")({
   head: () => ({ meta: [{ title: "毒奶观察室 · 赛中" }] }),
@@ -144,27 +145,27 @@ function buildUserFeedback(
 function Match() {
   const nav = useNavigate();
   const profile = useAppStore((s) => s.profile);
-  
+
   // 获取用户选择的主队名称
   function getTeamName(): string {
     if (!profile) return "TES";
-    
+
     // 如果是自定义的队伍
     if (profile.team === "custom" && profile.customTeam) {
       return profile.customTeam;
     }
-    
+
     // 从TOURNAMENTS中找到对应的队伍
     const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
     if (tournament) {
       const team = tournament.teams.find((t) => t.id === profile.team);
       if (team) return team.name;
     }
-    
+
     // 兜底
     return "TES";
   }
-  
+
   const team = getTeamName();
   const {
     addLog,
@@ -383,6 +384,33 @@ function Match() {
           ← 暂离
         </Link>
 
+        <div className="mt-3">
+          <MatchStageRail current="live" />
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] p-4">
+            <div className="flex items-center gap-2 font-display text-xs uppercase tracking-[0.3em] text-accent">
+              <Radio className="h-4 w-4 animate-pulse" />
+              Live Booth
+            </div>
+            <div className="mt-3 text-2xl font-display">
+              {matchEnded ? "终场哨响，情绪留档" : "直播间开麦，事件流实时滚动"}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              比分、关键团战、金句和 Flag 都会在这里同步，赛中页面要像坐在弹幕最前排。
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <LiveMetric
+              icon={Activity}
+              label="对局时间"
+              value={matchEnded ? "FT" : `${matchMinute}'`}
+            />
+            <LiveMetric icon={Zap} label="情绪峰值" value={`${goldenCount} 句`} />
+          </div>
+        </div>
+
         {/* Scoreboard */}
         <GlassCard glow="primary" className="mt-3 !p-4">
           <div className="grid grid-cols-3 items-center gap-2">
@@ -513,6 +541,26 @@ function Match() {
         </div>
       </div>
     </main>
+  );
+}
+
+function LiveMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-accent/20 bg-white/[0.04] p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 text-accent" />
+        {label}
+      </div>
+      <div className="mt-2 font-mono text-2xl font-bold text-accent">{value}</div>
+    </div>
   );
 }
 
