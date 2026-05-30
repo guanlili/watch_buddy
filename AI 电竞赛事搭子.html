@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 电竞赛事搭子 · 原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Saira:ital,wght@0,600;0,800;1,600;1,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+/* ============================================================
+   AI 电竞赛事搭子 — design system
+   ============================================================ */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --font-cjk: "Noto Sans SC", -apple-system, system-ui, sans-serif;
+  --font-disp: "Saira", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --r-lg: 26px;
+  --r-md: 18px;
+  --r-sm: 12px;
+
+  /* ---- default theme: 霓虹深空 (neon) ---- */
+  --bg0: #05060d;
+  --bg1: #0b1020;
+  --bg-grad: radial-gradient(120% 90% at 50% -10%, #131a33 0%, #0a0f1e 45%, #05060d 100%);
+  --surface: rgba(255,255,255,0.045);
+  --surface-2: rgba(255,255,255,0.075);
+  --stroke: rgba(255,255,255,0.10);
+  --stroke-strong: rgba(255,255,255,0.18);
+  --ink: #f4f6ff;
+  --ink-dim: rgba(226,231,255,0.62);
+  --ink-faint: rgba(226,231,255,0.34);
+
+  --violet: #7c5cff;
+  --violet-glow: rgba(124,92,255,0.55);
+  --cyan: #29e2d6;
+  --cyan-glow: rgba(41,226,214,0.5);
+  --orange: #ff6b3d;
+  --orange-glow: rgba(255,107,61,0.5);
+
+  --accent: var(--violet);
+  --accent-glow: var(--violet-glow);
+  --accent-2: var(--cyan);
+  --accent-2-glow: var(--cyan-glow);
+
+  --emo-ecstasy: #ffcc3d;
+  --emo-anger: #ff5a3c;
+  --emo-tension: #4fd1e0;
+  --emo-devastated: #6c7ddd;
+  --emo-calm: #9aa3c7;
+}
+
+/* ---- theme: 热血火线 (ember) ---- */
+[data-theme="ember"] {
+  --bg0: #0c0605;
+  --bg1: #1a0c08;
+  --bg-grad: radial-gradient(120% 90% at 50% -10%, #2a1108 0%, #160a07 45%, #0c0605 100%);
+  --violet: #ff3d77;
+  --violet-glow: rgba(255,61,119,0.5);
+  --cyan: #ffb13d;
+  --cyan-glow: rgba(255,177,61,0.5);
+  --orange: #ff5e3a;
+  --orange-glow: rgba(255,94,58,0.55);
+  --accent: #ff5e3a;
+  --accent-glow: rgba(255,94,58,0.55);
+  --accent-2: #ffb13d;
+  --accent-2-glow: rgba(255,177,61,0.5);
+}
+
+/* ---- theme: 寒霜赛博 (frost) ---- */
+[data-theme="frost"] {
+  --bg0: #04080d;
+  --bg1: #081320;
+  --bg-grad: radial-gradient(120% 90% at 50% -10%, #0e2233 0%, #07131f 45%, #04080d 100%);
+  --violet: #7e8cff;
+  --violet-glow: rgba(126,140,255,0.45);
+  --cyan: #4fd6e6;
+  --cyan-glow: rgba(79,214,230,0.45);
+  --orange: #ffae6b;
+  --orange-glow: rgba(255,174,107,0.4);
+  --accent: #4fd6e6;
+  --accent-glow: rgba(79,214,230,0.5);
+  --accent-2: #7e8cff;
+  --accent-2-glow: rgba(126,140,255,0.45);
+}
+
+body { margin: 0; background: #0a0a0f; font-family: var(--font-cjk); }
+
+.app-root {
+  position: absolute; inset: 0;
+  background: var(--bg-grad);
+  color: var(--ink);
+  font-family: var(--font-cjk);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.disp { font-family: var(--font-disp); font-style: italic; font-weight: 800; letter-spacing: -0.01em; }
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+.title-stroke {
+  font-family: var(--font-disp);
+  font-style: italic; font-weight: 800;
+  -webkit-text-stroke: 1.5px rgba(255,255,255,0.85);
+  color: transparent;
+  letter-spacing: 0.01em;
+}
+
+.glow-accent { color: var(--accent); text-shadow: 0 0 18px var(--accent-glow); }
+.glow-cyan { color: var(--cyan); text-shadow: 0 0 16px var(--cyan-glow); }
+.glow-orange { color: var(--orange); text-shadow: 0 0 16px var(--orange-glow); }
+
+.app-root *::-webkit-scrollbar { width: 0; height: 0; }
+.no-sb { scrollbar-width: none; }
+.no-sb::-webkit-scrollbar { display: none; }
+
+.btn { font-family: var(--font-cjk); cursor: pointer; border: none; outline: none;
+  transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease; }
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent), var(--accent-2) 55%));
+  color: #fff; font-weight: 800;
+  box-shadow: 0 8px 26px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.btn-primary:hover { box-shadow: 0 10px 34px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.4); }
+
+.btn-ghost {
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--stroke-strong); font-weight: 700;
+}
+
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.particles i {
+  position: absolute; display: block; width: 2px; border-radius: 2px;
+  background: linear-gradient(transparent, var(--accent-2), transparent);
+  opacity: 0.5; animation: fall linear infinite;
+}
+@keyframes fall {
+  0% { transform: translateY(-40px); opacity: 0; }
+  20% { opacity: .55; }
+  100% { transform: translateY(900px); opacity: 0; }
+}
+
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes breathe { 0%,100% { opacity:.55; transform: scale(1);} 50%{opacity:1; transform: scale(1.06);} }
+@keyframes slideUp { from { transform: translateY(12px); } to { transform: translateY(0); } }
+@keyframes popIn { 0% { transform: scale(.94);} 60%{transform: scale(1.03);} 100%{transform: scale(1);} }
+@keyframes bubbleIn { from { transform: translateY(7px) scale(.99); } to { transform: translateY(0) scale(1); } }
+.anim-slideup { animation: slideUp .45s cubic-bezier(.2,.8,.2,1) both; }
+.anim-pop { animation: popIn .4s cubic-bezier(.2,.9,.3,1.2) both; }
+
+@keyframes wave { 0%,100% { transform: scaleY(0.3);} 50%{transform: scaleY(1);} }
+.wave-bar { width: 3px; border-radius: 3px; background: currentColor; transform-origin: center;
+  animation: wave .7s ease-in-out infinite; }
+
+.fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+
+@keyframes confettiFall {
+  0% { transform: translateY(-30px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(840px) rotate(720deg); opacity: 0; }
+}
+.confetti-piece { position: absolute; top: 0; border-radius: 2px; animation: confettiFall linear forwards; }
+
+@keyframes fwFly { 0% { transform: translateX(0) scale(1.4); opacity: 1; } 100% { transform: translateX(64px) scale(.4); opacity: 0; } }
+.firework { position: absolute; width: 0; height: 0; }
+.firework .fw-ray { position: absolute; left: 0; top: 0; }
+.firework .fw-ray span { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 50%;
+  animation: fwFly .95s ease-out forwards; }
+
+@keyframes goldFlash { 0% { opacity: 0;} 25% { opacity: .9;} 100% { opacity: 0;} }
+.gold-flash { position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(255,204,61,0.55), transparent 60%);
+  animation: goldFlash 1.1s ease-out forwards; }
+
+@keyframes screenShake {
+  0%,100% { transform: translate(0,0); }
+  15% { transform: translate(-6px, 3px); }
+  30% { transform: translate(5px, -4px); }
+  45% { transform: translate(-5px, -2px); }
+  60% { transform: translate(4px, 3px); }
+  75% { transform: translate(-3px, 2px); }
+}
+.shake { animation: screenShake .5s ease-in-out; }
+@keyframes bombFlash { 0% { opacity:0; transform: scale(.2);} 20%{opacity:1;} 100%{opacity:0; transform: scale(1.6);} }
+.bomb-flash { position: absolute; left: 50%; top: 46%; width: 240px; height: 240px; margin: -120px 0 0 -120px;
+  border-radius: 50%; background: radial-gradient(circle, #fff 0%, var(--orange) 30%, rgba(255,90,60,0.4) 55%, transparent 70%);
+  animation: bombFlash .55s ease-out forwards; }
+
+@keyframes rainFall { 0% { transform: translateY(-20px);} 100% { transform: translateY(880px);} }
+.rain-drop { position: absolute; top: 0; width: 1.5px; height: 36px; border-radius: 2px;
+  background: linear-gradient(transparent, rgba(150,170,210,0.55)); animation: rainFall linear infinite; }
+.cold-veil { position: absolute; inset: 0; background: rgba(40,55,90,0.42);
+  mix-blend-mode: multiply; transition: opacity .8s ease; }
+
+@keyframes heartbeatVeil { 0%,100% { opacity: 0;} 50% { opacity: .5;} }
+.heartbeat-veil { position: absolute; inset: 0; box-shadow: inset 0 0 120px 30px rgba(79,209,224,0.35);
+  animation: heartbeatVeil 1.1s ease-in-out 2; }
+
+@keyframes dotPulse { 0%,100%{ r: 4; } 50% { r: 7; } }
+
+/* ---------- Tweaks panel (standalone toggle) ---------- */
+.tweaks-toggle {
+  position: fixed; right: 18px; bottom: 18px; z-index: 2147483645;
+  width: 44px; height: 44px; border-radius: 14px;
+  background: rgba(16,20,36,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px); cursor: pointer; font-size: 18px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.tweaks-toggle:hover { background: rgba(28,32,52,0.92); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- ============================================================
+       tweaks panel
+       ============================================================ -->
+  <script type="text/babel">
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:72px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 88px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:pointer}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:pointer}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:pointer;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:pointer;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div className="twk-panel">
+        <div className="twk-hd">
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks" onClick={onClose}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (<><div className="twk-sect">{label}</div>{children}</>);
+}
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio,
+});
+  </script>
+
+  <!-- ============================================================
+       iOS device frame
+       ============================================================ -->
+  <script type="text/babel">
+function IOSStatusBar({ dark = false, time = '9:41' }) {
+  const c = dark ? '#fff' : '#000';
+  return (
+    <div style={{
+      display: 'flex', gap: 154, alignItems: 'center', justifyContent: 'center',
+      padding: '21px 24px 19px', boxSizing: 'border-box',
+      position: 'relative', zIndex: 20, width: '100%',
+    }}>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 1.5 }}>
+        <span style={{
+          fontFamily: '-apple-system, "SF Pro", system-ui', fontWeight: 590,
+          fontSize: 17, lineHeight: '22px', color: c,
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, paddingTop: 1, paddingRight: 1 }}>
+        <svg width="19" height="12" viewBox="0 0 19 12">
+          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill={c}/>
+          <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill={c}/>
+          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill={c}/>
+          <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill={c}/>
+        </svg>
+        <svg width="17" height="12" viewBox="0 0 17 12">
+          <path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill={c}/>
+          <path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill={c}/>
+          <circle cx="8.5" cy="10.5" r="1.5" fill={c}/>
+        </svg>
+        <svg width="27" height="13" viewBox="0 0 27 13">
+          <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke={c} strokeOpacity="0.35" fill="none"/>
+          <rect x="2" y="2" width="20" height="9" rx="2" fill={c}/>
+          <path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill={c} fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function IOSDevice({ children, width = 402, height = 874, dark = false }) {
+  return (
+    <div style={{
+      width, height, borderRadius: 48, overflow: 'hidden',
+      position: 'relative', background: dark ? '#000' : '#F2F2F7',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+    }}>
+      <div style={{
+        position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+        width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
+      }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <IOSStatusBar dark={dark} />
+      </div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+      </div>
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
+        height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        paddingBottom: 8, pointerEvents: 'none',
+      }}>
+        <div style={{
+          width: 139, height: 5, borderRadius: 100,
+          background: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { IOSDevice, IOSStatusBar });
+  </script>
+
+  <!-- ============================================================
+       data
+       ============================================================ -->
+  <script type="text/babel">
+const TEAMS = {
+  TES: {
+    id: 'TES', name: 'TES', full: 'Top Esports', color: '#d83a3a', short: '滔搏',
+    roster: [
+      { role: '上单', name: '369' },
+      { role: '打野', name: 'Tian' },
+      { role: '中单', name: 'Creme' },
+      { role: 'ADC', name: 'JackeyLove' },
+      { role: '辅助', name: 'Crisp' },
+    ],
+  },
+  JDG: {
+    id: 'JDG', name: 'JDG', full: 'JD Gaming', color: '#c69a3a', short: '京东',
+    roster: [
+      { role: '上单', name: 'Bin' },
+      { role: '打野', name: 'Xun' },
+      { role: '中单', name: 'Knight' },
+      { role: 'ADC', name: 'Peyz' },
+      { role: '辅助', name: 'Missing' },
+    ],
+  },
+};
+
+const TEAM_OPTIONS = [
+  { id: 'TES', label: 'TES', league: 'LPL' },
+  { id: 'JDG', label: 'JDG', league: 'LPL' },
+  { id: 'BLG', label: 'BLG', league: 'LPL' },
+  { id: 'WBG', label: 'WBG', league: 'LPL' },
+  { id: 'T1', label: 'T1', league: 'LCK' },
+  { id: 'GEN', label: 'GEN.G', league: 'LCK' },
+  { id: 'KPL_AG', label: '成都AG', league: 'KPL' },
+  { id: 'CS_FaZe', label: 'FaZe', league: 'CS2' },
+  { id: 'passerby', label: '纯路人 🤡', league: '谁强我看谁' },
+];
+
+const PLAYER_SUGGESTIONS = ['JackeyLove', 'Faker', 'Uzi', 'Knight', 'Tian', 'Donk', 'Chovy', 'TheShy'];
+
+const EVENT_OPTIONS = [
+  { id: 'lol', label: '英雄联盟', tag: 'LoL' },
+  { id: 'dota2', label: 'DOTA2', tag: 'DOTA2' },
+  { id: 'cs2', label: 'CS2', tag: 'CS2' },
+  { id: 'valorant', label: '瓦罗兰特', tag: 'VAL' },
+  { id: 'pubg', label: '王者荣耀', tag: 'KPL' },
+  { id: 'naraka', label: '永劫无间', tag: 'NARAKA' },
+];
+
+const PUSH_TIMINGS = [
+  { id: 30, label: '开赛前 30 分钟' },
+  { id: 15, label: '开赛前 15 分钟' },
+  { id: 'half', label: '半场提醒' },
+  { id: 'post', label: '赛后高光' },
+];
+
+const EMOTION = {
+  ecstasy:    { key: 'ecstasy',    cn: '狂喜', color: 'var(--emo-ecstasy)',    raw: '#ffcc3d', glyph: '🔥', fx: 'celebrate' },
+  anger:      { key: 'anger',      cn: '愤怒', color: 'var(--emo-anger)',      raw: '#ff5a3c', glyph: '💢', fx: 'bomb' },
+  tension:    { key: 'tension',    cn: '紧张', color: 'var(--emo-tension)',    raw: '#4fd1e0', glyph: '😬', fx: 'heartbeat' },
+  devastated: { key: 'devastated', cn: '破防', color: 'var(--emo-devastated)', raw: '#6c7ddd', glyph: '🌧', fx: 'rain' },
+  calm:       { key: 'calm',       cn: '平淡', color: 'var(--emo-calm)',       raw: '#9aa3c7', glyph: '💬', fx: null },
+};
+
+const TIMELINE = [
+  {
+    t: 0, matchTime: "BP", phase: 'pre',
+    event: 'BP 阶段：JDG 抢了 TES 的招牌中单英雄',
+    user: '今晚必须赢，我JKL的皮肤都提前买好了',
+    emotion: 'calm', intensity: 2, golden: false,
+    flag: { creator: 'agent', content: 'JKL 这把至少 8 杀，我包了' },
+    agent: '买都买了，今晚不赢说不过去。先立个 flag——JKL 这把至少 8 个人头，我包了。',
+  },
+  {
+    t: 1, matchTime: "08'", phase: 'play',
+    event: "JDG 打野河道反蹲，TES 一血被拿",
+    user: '我去这波打野是来送的吗，急了急了',
+    emotion: 'anger', intensity: 4, golden: false,
+    agent: '那波就是对面蹲到了，别上头。线上一点没崩，等中野联动直接打回来。',
+  },
+  {
+    t: 2, matchTime: "14'", phase: 'play',
+    event: 'TES 中野联动小龙团反杀 2 人',
+    user: '哈哈哈哈反杀了！！这才对嘛！',
+    emotion: 'ecstasy', intensity: 4, golden: false,
+    agent: '我就说别急——JKL 这走位，对面 ADC 看了想退游。',
+  },
+  {
+    t: 3, matchTime: "21'", phase: 'play',
+    event: '大龙团 TES 0 换 4，团灭对面',
+    user: '团灭！！这波血赚！我直接上头了！！',
+    emotion: 'ecstasy', intensity: 5, golden: true,
+    agent: '这波直接开香槟！稳了稳了，对面现在可以打字了。',
+  },
+  {
+    t: 4, matchTime: "28'", phase: 'play',
+    event: 'JDG 偷家拉扯，TES 高地一塔告破',
+    user: '别浪啊…这把别又给我整不会了',
+    emotion: 'tension', intensity: 3, golden: false,
+    agent: '稳住别飘，经济咱们还领先两千。猥琐发育，别去接他这一波。',
+  },
+  {
+    t: 5, matchTime: "33'", phase: 'play',
+    event: '第二条大龙团 TES 0 换 4，大优崩盘',
+    user: '啊啊啊这波团就不该开！破防了真的破防了',
+    emotion: 'devastated', intensity: 5, golden: true,
+    flag: { creator: 'agent', content: '下一波大龙咱们蹲他一手，翻盘' },
+    agent: '我懂…这波是真亏。但经济还没崩穿，听我的——下波大龙咱们蹲他一手，翻盘的剧本我见多了。',
+  },
+  {
+    t: 6, matchTime: "38'", phase: 'play',
+    event: 'TES 大龙团反打 1 换 4，直接推平',
+    user: '翻盘了！！！！TES 牛逼！！！！',
+    emotion: 'ecstasy', intensity: 5, golden: true,
+    flagResolve: { status: 'hit', content: '下一波大龙咱们蹲他一手，翻盘' },
+    agent: '我立的 flag 呢？！大龙蹲他翻盘，我就说吧！这把你欠我一杯奶茶。',
+  },
+  {
+    t: 7, matchTime: "终", phase: 'post',
+    event: 'TES 推掉水晶，拿下比赛',
+    user: 'JKL 今天太顶了，这把 MVP 没跑',
+    emotion: 'ecstasy', intensity: 4, golden: false,
+    flagResolve: { status: 'hit', content: 'JKL 这把至少 8 杀，我包了' },
+    agent: '8 杀 flag 稳稳兑现，MVP 实至名归。今晚这局，值得发个朋友圈装一波——交给我。',
+  },
+];
+
+const USER_VOICE_CHIPS = TIMELINE.map(x => x.user);
+
+const PREMATCH = {
+  league: 'LPL 2026 夏季赛 · 季后赛',
+  home: 'TES', away: 'JDG',
+  countdownSec: 30 * 60,
+  prediction: { home: 58, away: 42, note: '近 5 场 TES 3 胜 2 负，下路对位 JKL 明显占优' },
+  h2h: '近期交手 3 - 2，TES 略占上风',
+  watchOdds: 'BO5 · 这是天王山之战',
+};
+
+const POSTER_TITLES = [
+  { id: 'a', hook: '上头了！', sub: '这波血赚' },
+  { id: 'b', hook: '破防→翻盘', sub: '剧本我见多了' },
+  { id: 'c', hook: 'TES 牛逼', sub: 'JKL MVP' },
+];
+
+const CAPTIONS = {
+  light: '从一血被偷到大龙翻盘，我就说别急——JKL 这把直接 MVP。对面现在可以打字了。🔥 #TESwin #JKL',
+  deep: `赛前我立了个 flag：JKL 这把至少 8 杀我包了。
+33 分钟大优崩盘那会儿，我是真破防了，差点把手机扔了。
+结果搭子一句"下波大龙蹲他翻盘"，38 分钟 1 换 4 直接推平——
+flag 兑现，MVP 实至名归。
+这就是看 TES 的代价：心脏得好，但赢的那一刻值了。
+#TESwin #JackeyLove #破防到狂喜`,
+};
+
+Object.assign(window, {
+  TEAMS, TEAM_OPTIONS, PLAYER_SUGGESTIONS, EVENT_OPTIONS, PUSH_TIMINGS,
+  EMOTION, TIMELINE, USER_VOICE_CHIPS, PREMATCH, POSTER_TITLES, CAPTIONS,
+});
+  </script>
+
+  <!-- ============================================================
+       effects (FX + audio + particles)
+       ============================================================ -->
+  <script type="text/babel">
+const SFX = (() => {
+  let ctx = null;
+  let enabled = true;
+  const ensure = () => {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+  const tone = (freq, t0, dur, type = 'sine', gain = 0.18, glideTo = null) => {
+    const c = ctx; if (!c) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+    o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  };
+  const noise = (t0, dur, gain = 0.25, freq = 1200, type = 'lowpass') => {
+    const c = ctx; if (!c) return;
+    const n = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+    const g = c.createGain(); g.gain.setValueAtTime(gain, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(t0); src.stop(t0 + dur);
+  };
+
+  return {
+    setEnabled(v) { enabled = v; },
+    unlock() { ensure(); },
+    play(kind) {
+      if (!enabled) return;
+      const c = ensure(); if (!c) return;
+      const n = c.currentTime;
+      if (kind === 'celebrate') {
+        [523, 659, 784, 1046].forEach((f, i) => tone(f, n + i * 0.07, 0.35, 'triangle', 0.16));
+        noise(n + 0.02, 0.5, 0.12, 5000, 'highpass');
+      } else if (kind === 'bomb') {
+        tone(160, n, 0.5, 'sine', 0.32, 38);
+        noise(n, 0.45, 0.4, 600, 'lowpass');
+      } else if (kind === 'sigh') {
+        tone(420, n, 0.7, 'sine', 0.14, 180);
+        noise(n + 0.05, 0.6, 0.06, 900, 'lowpass');
+      } else if (kind === 'heartbeat') {
+        tone(70, n, 0.18, 'sine', 0.3); tone(70, n + 0.32, 0.22, 'sine', 0.26);
+      }
+    },
+  };
+})();
+
+function ParticleBg({ count = 16 }) {
+  const items = React.useMemo(() => Array.from({ length: count }, (_, i) => ({
+    left: Math.random() * 100,
+    h: 24 + Math.random() * 70,
+    dur: 6 + Math.random() * 7,
+    delay: -Math.random() * 10,
+  })), [count]);
+  return (
+    <div className="particles">
+      {items.map((p, i) => (
+        <i key={i} style={{ left: p.left + '%', height: p.h, animationDuration: p.dur + 's', animationDelay: p.delay + 's' }} />
+      ))}
+    </div>
+  );
+}
+
+const CONFETTI_COLORS = ['#ffcc3d', '#ff6b3d', '#29e2d6', '#7c5cff', '#ff3d77', '#ffffff'];
+
+function Confetti({ n = 60 }) {
+  const pieces = React.useMemo(() => Array.from({ length: n }, () => ({
+    left: Math.random() * 100,
+    w: 5 + Math.random() * 7, h: 8 + Math.random() * 10,
+    color: CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0],
+    dur: 1.6 + Math.random() * 1.4, delay: Math.random() * 0.5,
+  })), [n]);
+  return pieces.map((p, i) => (
+    <span key={i} className="confetti-piece" style={{
+      left: p.left + '%', width: p.w, height: p.h, background: p.color,
+      animationDuration: p.dur + 's', animationDelay: p.delay + 's',
+    }} />
+  ));
+}
+
+function Fireworks({ n = 4 }) {
+  const bursts = React.useMemo(() => Array.from({ length: n }, () => ({
+    x: 15 + Math.random() * 70, y: 18 + Math.random() * 40,
+    color: CONFETTI_COLORS[(Math.random() * 4) | 0],
+    delay: Math.random() * 0.6,
+    rays: Array.from({ length: 14 }, (_, k) => k * (360 / 14)),
+  })), [n]);
+  return bursts.map((b, i) => (
+    <div key={i} className="firework" style={{ left: b.x + '%', top: b.y + '%' }}>
+      {b.rays.map((deg, k) => (
+        <div key={k} className="fw-ray" style={{ transform: `rotate(${deg}deg)` }}>
+          <span style={{ background: b.color, boxShadow: `0 0 8px ${b.color}`, animationDelay: b.delay + 's' }} />
+        </div>
+      ))}
+    </div>
+  ));
+}
+
+function Rain({ n = 70 }) {
+  const drops = React.useMemo(() => Array.from({ length: n }, () => ({
+    left: Math.random() * 100, dur: 0.5 + Math.random() * 0.5, delay: Math.random() * 1, h: 24 + Math.random() * 26,
+  })), [n]);
+  return drops.map((d, i) => (
+    <span key={i} className="rain-drop" style={{ left: d.left + '%', height: d.h, animationDuration: d.dur + 's', animationDelay: d.delay + 's' }} />
+  ));
+}
+
+function EmotionFX({ fx, fxStyle = 'mixed', intensity = 7, soundOn = true, onColdVeil, onShake }) {
+  const [active, setActive] = React.useState(null);
+  const dens = Math.max(0.35, intensity / 7);
+
+  React.useEffect(() => {
+    if (!fx) return;
+    const emo = fx.emotion;
+    setActive(fx);
+    if (emo === 'ecstasy') { SFX.play('celebrate'); }
+    else if (emo === 'anger') { SFX.play('bomb'); onShake && onShake(); }
+    else if (emo === 'devastated') { SFX.play('sigh'); onColdVeil && onColdVeil(true); }
+    else if (emo === 'tension') { SFX.play('heartbeat'); }
+    const dur = emo === 'devastated' ? 4200 : emo === 'ecstasy' ? 2600 : 1600;
+    const tid = setTimeout(() => {
+      setActive(null);
+      if (emo === 'devastated') onColdVeil && onColdVeil(false);
+    }, dur);
+    return () => clearTimeout(tid);
+  }, [fx && fx.id]);
+
+  if (!active) return null;
+  const emo = active.emotion;
+
+  return (
+    <div className="fx-layer">
+      {emo === 'ecstasy' && (
+        <>
+          {(fxStyle === 'mixed' || fxStyle === 'confetti') && <Confetti n={Math.round(60 * dens)} />}
+          {(fxStyle === 'mixed' || fxStyle === 'fireworks') && <Fireworks n={Math.round(4 * dens)} />}
+          <div className="gold-flash" />
+        </>
+      )}
+      {emo === 'anger' && <div className="bomb-flash" />}
+      {emo === 'devastated' && <Rain n={Math.round(70 * dens)} />}
+      {emo === 'tension' && <div className="heartbeat-veil" />}
+    </div>
+  );
+}
+
+Object.assign(window, { EmotionFX, ParticleBg, SFX, Confetti, Fireworks, Rain });
+  </script>
+
+  <!-- ============================================================
+       shared components
+       ============================================================ -->
+  <script type="text/babel">
+function DogAvatar({ size = 56, speaking = false, glow = true, ring = true }) {
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      {ring && (
+        <div style={{
+          position: 'absolute', inset: -3, borderRadius: '30%',
+          background: 'conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--orange), var(--accent))',
+          filter: speaking ? 'saturate(1.3)' : 'none',
+          animation: speaking ? 'breathe 1s ease-in-out infinite' : 'none',
+          opacity: glow ? 1 : 0.6,
+        }} />
+      )}
+      <div style={{
+        position: 'absolute', inset: ring ? 0 : 0, borderRadius: '28%',
+        background: 'linear-gradient(160deg, #1b2243, #0c1124)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.56, lineHeight: 1,
+        boxShadow: glow ? '0 0 18px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.12)' : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+        overflow: 'hidden',
+      }}>
+        <span style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.4))' }}>🐶</span>
+      </div>
+      <div style={{
+        position: 'absolute', right: -2, bottom: -2, fontSize: size * 0.26,
+        background: 'var(--bg1)', borderRadius: 7, padding: '1px 3px',
+        border: '1px solid var(--stroke-strong)', lineHeight: 1,
+      }}>⌨️</div>
+    </div>
+  );
+}
+
+function PrimaryButton({ children, onClick, style = {}, disabled }) {
+  return (
+    <button className="btn btn-primary" onClick={onClick} disabled={disabled}
+      style={{ borderRadius: 16, padding: '15px 22px', fontSize: 17, width: '100%',
+        opacity: disabled ? 0.45 : 1, ...style }}>
+      {children}
+    </button>
+  );
+}
+function GhostButton({ children, onClick, style = {} }) {
+  return (
+    <button className="btn btn-ghost" onClick={onClick}
+      style={{ borderRadius: 14, padding: '13px 18px', fontSize: 15, ...style }}>
+      {children}
+    </button>
+  );
+}
+
+function VoiceWave({ color = 'currentColor', bars = 18, height = 22, active = true }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3, height, color }}>
+      {Array.from({ length: bars }).map((_, i) => (
+        <span key={i} className="wave-bar" style={{
+          height: height,
+          animationPlayState: active ? 'running' : 'paused',
+          animationDelay: (i * 0.06) + 's',
+          animationDuration: (0.6 + (i % 4) * 0.12) + 's',
+          opacity: 0.55 + 0.45 * Math.abs(Math.sin(i)),
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function EmotionBadge({ emotion, intensity, compact = false }) {
+  const e = window.EMOTION[emotion];
+  if (!e) return null;
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: compact ? '2px 8px' : '4px 10px', borderRadius: 999,
+      background: 'color-mix(in oklab, ' + e.raw + ' 18%, transparent)',
+      border: '1px solid color-mix(in oklab, ' + e.raw + ' 45%, transparent)',
+      fontSize: compact ? 11 : 12.5, fontWeight: 700, color: e.raw, whiteSpace: 'nowrap',
+    }}>
+      <span style={{ fontSize: compact ? 11 : 13 }}>{e.glyph}</span>
+      {e.cn}
+      {!compact && (
+        <span style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span key={i} style={{
+              width: 4, height: 4, borderRadius: 9, background: i < intensity ? e.raw : 'rgba(255,255,255,0.18)',
+            }} />
+          ))}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function FlagChip({ content, state = 'open', creator }) {
+  const map = {
+    open: { c: 'var(--accent-2)', label: creator === 'agent' ? '搭子立 flag' : '你立了 flag', icon: '🚩' },
+    hit:  { c: 'var(--emo-ecstasy)', label: 'flag 命中', icon: '✅' },
+    miss: { c: 'var(--emo-anger)', label: 'flag 翻车', icon: '💀' },
+  };
+  const m = map[state] || map.open;
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7, maxWidth: '88%',
+      padding: '6px 11px', borderRadius: 12, fontSize: 12.5,
+      background: 'color-mix(in oklab,' + m.c + ' 12%, transparent)',
+      border: '1px dashed color-mix(in oklab,' + m.c + ' 55%, transparent)',
+      color: m.c, fontWeight: 600,
+    }}>
+      <span>{m.icon}</span>
+      <span style={{ opacity: 0.85, color: 'var(--ink)' }}>{content}</span>
+      <span style={{ marginLeft: 'auto', fontWeight: 800 }}>{m.label}</span>
+    </div>
+  );
+}
+
+function ChatBubble({ who, text, emotion, intensity, golden, flag, flagResolve, bubbleStyle = 'glass', animate = true }) {
+  const isAgent = who === 'agent';
+  const e = emotion ? window.EMOTION[emotion] : null;
+  const accentRaw = isAgent ? null : (e ? e.raw : null);
+
+  const base = {
+    maxWidth: '82%', padding: '12px 15px', fontSize: 15.5, lineHeight: 1.5,
+    position: 'relative', wordBreak: 'break-word',
+    animation: animate ? 'bubbleIn .4s cubic-bezier(.2,.8,.2,1) both' : 'none',
+  };
+
+  let skin = {};
+  if (bubbleStyle === 'solid') {
+    skin = isAgent
+      ? { background: 'linear-gradient(160deg,#1a2147,#121734)', border: '1px solid var(--stroke)', borderRadius: '18px 18px 18px 5px' }
+      : { background: 'linear-gradient(135deg, var(--accent), color-mix(in oklab,var(--accent),var(--accent-2) 50%))', color: '#fff', borderRadius: '18px 18px 5px 18px' };
+  } else if (bubbleStyle === 'minimal') {
+    skin = isAgent
+      ? { background: 'transparent', borderLeft: '2px solid var(--accent)', borderRadius: 0, paddingLeft: 13 }
+      : { background: 'rgba(255,255,255,0.06)', borderRadius: 14 };
+  } else {
+    skin = isAgent
+      ? { borderRadius: '18px 18px 18px 6px' }
+      : { borderRadius: '18px 18px 6px 18px', borderColor: accentRaw ? 'color-mix(in oklab,' + accentRaw + ' 55%, transparent)' : undefined };
+  }
+  const cls = bubbleStyle === 'glass' ? 'glass' : '';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isAgent ? 'flex-start' : 'flex-end', gap: 5, width: '100%' }}>
+      {!isAgent && e && (
+        <div style={{ paddingRight: 2 }}><EmotionBadge emotion={emotion} intensity={intensity} compact /></div>
+      )}
+      <div className={cls} style={{ ...base, ...skin }}>
+        {golden && (
+          <span style={{
+            position: 'absolute', top: -9, right: isAgent ? 'auto' : 10, left: isAgent ? 10 : 'auto',
+            fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 999,
+            background: 'var(--emo-ecstasy)', color: '#1a1400', boxShadow: '0 2px 10px rgba(255,204,61,.5)',
+          }}>✦ 金句</span>
+        )}
+        {text}
+      </div>
+      {flag && (
+        <FlagChip content={flag.content} state="open" creator={flag.creator} />
+      )}
+      {flagResolve && (
+        <FlagChip content={flagResolve.content} state={flagResolve.status} />
+      )}
+    </div>
+  );
+}
+
+function TeamCrest({ team, size = 56 }) {
+  const t = window.TEAMS[team] || { name: team, color: '#888', short: '' };
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 16, flexShrink: 0,
+      background: `linear-gradient(155deg, ${t.color}, color-mix(in oklab, ${t.color} 40%, #0b0f1e))`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      boxShadow: `0 6px 20px color-mix(in oklab, ${t.color} 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.25)`,
+      border: '1px solid rgba(255,255,255,0.14)', position: 'relative', overflow: 'hidden',
+    }}>
+      <span className="disp" style={{ fontSize: size * 0.34, color: '#fff', fontWeight: 800, letterSpacing: 0 }}>{t.name}</span>
+      <span style={{ fontSize: size * 0.15, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>{t.short}</span>
+    </div>
+  );
+}
+
+function PlayerAvatar({ name, size = 44, ringColor }) {
+  const initials = (name || '?').slice(0, 2);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: size + 12 }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: 'repeating-linear-gradient(135deg, #1a2040, #1a2040 6px, #151a36 6px, #151a36 12px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: `2px solid ${ringColor || 'var(--stroke-strong)'}`,
+        boxShadow: ringColor ? `0 0 14px color-mix(in oklab, ${ringColor} 55%, transparent)` : 'none',
+        color: 'var(--ink-dim)', fontSize: size * 0.3, fontWeight: 700,
+      }}>{initials}</div>
+      <span style={{ fontSize: 10.5, color: 'var(--ink-dim)', maxWidth: size + 10, textAlign: 'center',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+    </div>
+  );
+}
+
+function VsBar({ home, away, homeVal, awayVal }) {
+  const ht = window.TEAMS[home], at = window.TEAMS[away];
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 7 }}>
+        <span style={{ color: ht.color, fontWeight: 800 }} className="mono">{homeVal}%</span>
+        <span style={{ color: 'var(--ink-faint)', fontSize: 11 }}>胜率预测</span>
+        <span style={{ color: at.color, fontWeight: 800 }} className="mono">{awayVal}%</span>
+      </div>
+      <div style={{ height: 10, borderRadius: 999, overflow: 'hidden', display: 'flex', background: 'rgba(255,255,255,0.06)' }}>
+        <div style={{ width: homeVal + '%', background: `linear-gradient(90deg, ${ht.color}, color-mix(in oklab,${ht.color} 60%, #fff 8%))` }} />
+        <div style={{ width: awayVal + '%', background: `linear-gradient(90deg, color-mix(in oklab,${at.color} 60%, #fff 8%), ${at.color})` }} />
+      </div>
+    </div>
+  );
+}
+
+function Chip({ children, selected, onClick, color, style = {} }) {
+  return (
+    <button className="btn" onClick={onClick} style={{
+      padding: '9px 15px', borderRadius: 999, fontSize: 14, fontWeight: 600,
+      background: selected ? 'color-mix(in oklab, var(--accent) 22%, transparent)' : 'var(--surface)',
+      border: selected ? '1.5px solid var(--accent)' : '1px solid var(--stroke)',
+      color: selected ? '#fff' : 'var(--ink-dim)',
+      boxShadow: selected ? '0 0 16px var(--accent-glow)' : 'none',
+      whiteSpace: 'nowrap',
+      ...style,
+    }}>{children}</button>
+  );
+}
+
+function ProgressDots({ total, current }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span key={i} style={{
+          width: i === current ? 22 : 7, height: 7, borderRadius: 999,
+          background: i === current ? 'var(--accent)' : (i < current ? 'var(--accent-2)' : 'rgba(255,255,255,0.18)'),
+          boxShadow: i === current ? '0 0 10px var(--accent-glow)' : 'none', transition: 'all .3s ease',
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function Screen({ children, particles = true, particleCount = 14, style = {}, onScrollRef }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-grad)' }}>
+      {particles && <window.ParticleBg count={particleCount} />}
+      <div className="no-sb" ref={onScrollRef} style={{ position: 'relative', zIndex: 1, flex: 1, overflowY: 'auto', overflowX: 'hidden', ...style }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, {
+  DogAvatar, PrimaryButton, GhostButton, VoiceWave, EmotionBadge,
+  ChatBubble, FlagChip, TeamCrest, PlayerAvatar, VsBar, Chip, ProgressDots, Screen,
+});
+  </script>
+
+  <!-- ============================================================
+       onboarding (FR-01)
+       ============================================================ -->
+  <script type="text/babel">
+function HeroSilhouette() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, height: '52%',
+        background: 'repeating-linear-gradient(115deg, rgba(124,92,255,.10) 0 14px, rgba(41,226,214,.06) 14px 28px)',
+        WebkitMaskImage: 'linear-gradient(to top, #000 0%, #000 30%, transparent 100%)',
+        maskImage: 'linear-gradient(to top, #000 0%, #000 30%, transparent 100%)',
+      }} />
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: '8%', textAlign: 'center',
+        fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 2,
+        color: 'rgba(255,255,255,0.16)',
+      }}>[ 英雄乱斗剪影 · hero brawl art ]</div>
+    </div>
+  );
+}
+
+function WelcomeStep({ onNext }) {
+  return (
+    <window.Screen particleCount={18} style={{ display: 'flex', flexDirection: 'column' }}>
+      <HeroSilhouette />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '0 28px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+        <div className="anim-pop" style={{ animation: 'floaty 3s ease-in-out infinite' }}>
+          <window.DogAvatar size={108} speaking />
+        </div>
+        <div className="title-stroke" style={{ fontSize: 30, marginTop: 26, lineHeight: 1.1 }}>赛事搭子</div>
+        <div className="disp glow-accent" style={{ fontSize: 15, marginTop: 4, letterSpacing: 3, textTransform: 'uppercase' }}>your ride-or-die</div>
+
+        <div className="glass anim-slideup" style={{ marginTop: 26, borderRadius: 20, padding: '16px 18px', textAlign: 'left', maxWidth: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <window.VoiceWave height={16} bars={14} color="var(--accent-2)" />
+            <span style={{ fontSize: 11, color: 'var(--ink-faint)' }}>搭子正在说话…</span>
+          </div>
+          <div style={{ fontSize: 15.5, lineHeight: 1.55 }}>
+            兄弟姐妹！您可算来了！我是你的赛博陪聊——比赛的时候我是你嘴替，<span className="glow-orange">输了陪你吐槽，赢了陪你吹</span>。不废话，先告诉我你是哪边的？选个主队，我立马把<b>速效救心丸</b>备好！
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '0 24px 30px', position: 'relative', zIndex: 2 }}>
+        <window.PrimaryButton onClick={onNext} style={{ fontSize: 18, animation: 'pulseGlow 2.2s ease-in-out infinite' }}>
+          开搞！⚡
+        </window.PrimaryButton>
+      </div>
+    </window.Screen>
+  );
+}
+
+function LoginStep({ onLogin }) {
+  const methods = [
+    { id: 'phone', icon: '📱', label: '手机号一键登录', hint: '本机号码 · 最快' },
+    { id: 'wechat', icon: '💬', label: '微信登录', hint: '一键授权' },
+    { id: 'email', icon: '✉️', label: '邮箱注册', hint: '老派但靠谱' },
+  ];
+  return (
+    <window.Screen particleCount={12}>
+      <div style={{ padding: '70px 26px 30px', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+        <window.DogAvatar size={56} />
+        <div className="disp" style={{ fontSize: 30, marginTop: 18, fontStyle: 'italic' }}>选个方式<br/>进来吧</div>
+        <div style={{ color: 'var(--ink-dim)', fontSize: 14, marginTop: 8 }}>登录完直接收集兴趣，不绕弯子。</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 32 }}>
+          {methods.map((m, i) => (
+            <button key={m.id} className="btn glass" onClick={() => onLogin(m.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px', borderRadius: 18,
+                textAlign: 'left', animation: `slideUp .4s ${i * 0.08}s both` }}>
+              <span style={{ fontSize: 26 }}>{m.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{m.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{m.hint}</div>
+              </div>
+              <span style={{ color: 'var(--accent)', fontSize: 20 }}>›</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 'auto', textAlign: 'center', fontSize: 11, color: 'var(--ink-faint)', paddingTop: 24 }}>
+          登录即同意《用户协议》和《隐私政策》
+        </div>
+      </div>
+    </window.Screen>
+  );
+}
+
+function AIInterject({ text }) {
+  if (!text) return null;
+  return (
+    <div className="anim-slideup" style={{ display: 'flex', gap: 9, alignItems: 'flex-start', marginTop: 16 }}>
+      <window.DogAvatar size={34} ring={false} glow={false} />
+      <div className="glass" style={{ borderRadius: '4px 14px 14px 14px', padding: '9px 13px', fontSize: 13.5, lineHeight: 1.45, color: 'var(--ink-dim)', flex: 1 }}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+function QuestionShell({ index, total, kicker, title, children, comment, canNext, onNext, nextLabel = '下一步' }) {
+  return (
+    <window.Screen particleCount={10}>
+      <div style={{ padding: '64px 24px 26px', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+          <window.ProgressDots total={total} current={index} />
+          <span className="mono" style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{index + 1}/{total}</span>
+        </div>
+        <div className="disp glow-cyan" style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' }}>{kicker}</div>
+        <div style={{ fontSize: 25, fontWeight: 800, marginTop: 6, lineHeight: 1.25, textWrap: 'balance' }}>{title}</div>
+        <div style={{ marginTop: 22, flex: 1 }}>{children}</div>
+        <AIInterject text={comment} />
+        <div style={{ marginTop: 20 }}>
+          <window.PrimaryButton onClick={onNext} disabled={!canNext}>{nextLabel}</window.PrimaryButton>
+        </div>
+      </div>
+    </window.Screen>
+  );
+}
+
+function WelcomeCard({ profile, onEnter }) {
+  const mainTeam = (profile.teams && profile.teams[0]) || 'TES';
+  const teamLabel = (window.TEAM_OPTIONS.find(o => o.id === mainTeam) || {}).label || 'TES';
+  const knownCrest = window.TEAMS[mainTeam] ? mainTeam : 'TES';
+  const player = (profile.players && profile.players[0]) || 'JackeyLove';
+  const [revealed, setRevealed] = React.useState(false);
+  React.useEffect(() => { const id = setTimeout(() => setRevealed(true), 350); return () => clearTimeout(id); }, []);
+
+  return (
+    <window.Screen particleCount={20}>
+      <div style={{ padding: '60px 22px 26px', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="anim-pop glass" style={{ borderRadius: 24, padding: '26px 22px', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(160deg, rgba(124,92,255,.18), rgba(41,226,214,.08))', border: '1px solid var(--stroke-strong)' }}>
+          <div className="gold-flash" style={{ animation: revealed ? 'goldFlash 1.2s ease-out' : 'none' }} />
+          <div className="disp glow-cyan" style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' }}>Welcome aboard</div>
+          <div className="title-stroke" style={{ fontSize: 26, lineHeight: 1.15, marginTop: 8 }}>恭喜！你已正式加入</div>
+          <div className="disp glow-accent" style={{ fontSize: 30, marginTop: 2, fontStyle: 'italic' }}>【毒奶观察室】</div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 24 }}>
+            <window.TeamCrest team={knownCrest} size={66} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>你的主队</div>
+              <div className="disp" style={{ fontSize: 22 }}>{teamLabel}</div>
+            </div>
+            <window.PlayerAvatar name={player} size={52} ringColor="var(--emo-ecstasy)" />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 22 }}>
+          <window.DogAvatar size={42} speaking />
+          <div className="glass" style={{ borderRadius: '5px 16px 16px 16px', padding: '13px 15px', fontSize: 14.5, lineHeight: 1.5, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+              <window.VoiceWave height={13} bars={12} color="var(--accent-2)" />
+              <span style={{ fontSize: 10.5, color: 'var(--ink-faint)' }}>语音播报中</span>
+            </div>
+            行家啊！选了 <b className="glow-accent">{teamLabel}</b>。你喜欢的选手是 <b className="glow-orange">{player}</b>？行，下次他开赛我第一个冲！
+          </div>
+        </div>
+
+        <div className="glass" style={{ marginTop: 18, borderRadius: 16, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--accent-2)', fontWeight: 700 }}>
+            <span>✓</span> 已按你的偏好订阅推送
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 4 }}>示例 · 一条赛前推送长这样：</div>
+          <div style={{ marginTop: 10, padding: '11px 13px', borderRadius: 12, background: 'rgba(0,0,0,0.25)', border: '1px solid var(--stroke)' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>📣 下一场 IG vs EDG，30 分钟后开战！</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-dim)', marginTop: 3 }}>别忘了你的速效救心丸 💊</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 'auto', paddingTop: 22 }}>
+          <window.PrimaryButton onClick={onEnter}>进入赛前阵地 →</window.PrimaryButton>
+        </div>
+      </div>
+    </window.Screen>
+  );
+}
+
+function Onboarding({ profile, setProfile, onComplete, t }) {
+  const [step, setStep] = React.useState('welcome');
+  const set = (patch) => setProfile(p => ({ ...p, ...patch }));
+
+  const toggleArr = (key, val, max) => {
+    setProfile(p => {
+      const cur = p[key] || [];
+      if (cur.includes(val)) return { ...p, [key]: cur.filter(x => x !== val) };
+      if (max && cur.length >= max) return p;
+      return { ...p, [key]: [...cur, val] };
+    });
+  };
+
+  if (step === 'welcome') return <WelcomeStep onNext={() => setStep('login')} />;
+  if (step === 'login') return <LoginStep onLogin={(m) => { set({ loginMethod: m }); setStep('q1'); }} />;
+
+  if (step === 'q1') {
+    const sel = profile.teams || [];
+    return (
+      <QuestionShell index={0} total={4} kicker="Question 01 · 主队" title="你是哪边的？最多选 3 个"
+        comment={sel.length ? '选完别改啊，万一我下次反向预测，别怪我毒奶你家主队 🤡' : null}
+        canNext={sel.length > 0} onNext={() => setStep('q2')}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {window.TEAM_OPTIONS.map(o => (
+            <window.Chip key={o.id} selected={sel.includes(o.id)} onClick={() => toggleArr('teams', o.id, 3)}>
+              {o.label}<span style={{ fontSize: 10, opacity: .6, marginLeft: 6 }}>{o.league}</span>
+            </window.Chip>
+          ))}
+        </div>
+      </QuestionShell>
+    );
+  }
+
+  if (step === 'q2') {
+    const sel = profile.players || [];
+    return (
+      <QuestionShell index={1} total={4} kicker="Question 02 · 本命选手" title="谁是你愿意为他熬夜的人？"
+        comment={null}
+        canNext onNext={() => setStep('q3')} nextLabel={sel.length ? '下一步' : '没有，跳过'}>
+        <input value={profile._playerInput || ''} placeholder="搜索或输入：Faker、Uzi、Donk…"
+          onChange={e => set({ _playerInput: e.target.value })}
+          onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { toggleArr('players', e.target.value.trim()); set({ _playerInput: '' }); } }}
+          style={{ width: '100%', padding: '13px 16px', borderRadius: 14, fontSize: 15,
+            background: 'var(--surface)', border: '1px solid var(--stroke-strong)', color: 'var(--ink)', outline: 'none', fontFamily: 'var(--font-cjk)' }} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, marginTop: 14 }}>
+          {window.PLAYER_SUGGESTIONS.map(p => (
+            <window.Chip key={p} selected={sel.includes(p)} onClick={() => toggleArr('players', p)}>{p}</window.Chip>
+          ))}
+        </div>
+        {!sel.length && <AIInterject text="没事，那就默认你最喜欢『赛后干饭型选手』。" />}
+      </QuestionShell>
+    );
+  }
+
+  if (step === 'q3') {
+    const sel = profile.events || [];
+    return (
+      <QuestionShell index={2} total={4} kicker="Question 03 · 关注赛事" title="平时主要看哪些？"
+        comment={sel.length ? '选个最常看的，我好知道什么时候给你推下饭操作集锦。' : null}
+        canNext={sel.length > 0} onNext={() => setStep('q4')}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {window.EVENT_OPTIONS.map(o => (
+            <window.Chip key={o.id} selected={sel.includes(o.id)} onClick={() => toggleArr('events', o.id)}>
+              {o.label}
+            </window.Chip>
+          ))}
+        </div>
+      </QuestionShell>
+    );
+  }
+
+  if (step === 'q4') {
+    const channels = profile.pushChannels || [];
+    const timing = profile.pushTiming;
+    const chanOpts = [{ id: 'wechat', label: '微信推送', icon: '💬' }, { id: 'app', label: 'App 内通知', icon: '🔔' }, { id: 'email', label: '邮件', icon: '✉️' }];
+    return (
+      <QuestionShell index={3} total={4} kicker="Question 04 · 推送偏好" title="什么时候喊你看球？"
+        comment={'放心，不会半夜 3 点叫你起来看 LCK——除非你选了。'}
+        canNext={channels.length > 0 && timing != null} onNext={() => setStep('card')} nextLabel="搞定，开冲 🚀">
+        <div style={{ fontSize: 12, color: 'var(--ink-faint)', marginBottom: 10 }}>推送渠道（可多选）</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {chanOpts.map(c => {
+            const on = channels.includes(c.id);
+            return (
+              <button key={c.id} className="btn glass" onClick={() => toggleArr('pushChannels', c.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderRadius: 14,
+                  border: on ? '1.5px solid var(--accent)' : '1px solid var(--stroke)', boxShadow: on ? '0 0 14px var(--accent-glow)' : 'none' }}>
+                <span style={{ fontSize: 19 }}>{c.icon}</span>
+                <span style={{ flex: 1, textAlign: 'left', fontSize: 15, color: 'var(--ink)' }}>{c.label}</span>
+                <span style={{ width: 42, height: 24, borderRadius: 999, background: on ? 'var(--accent)' : 'rgba(255,255,255,0.14)', position: 'relative', transition: 'all .2s' }}>
+                  <span style={{ position: 'absolute', top: 2, left: on ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'all .2s' }} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '18px 0 10px' }}>提前提醒时间</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+          {window.PUSH_TIMINGS.map(o => (
+            <window.Chip key={o.id} selected={timing === o.id} onClick={() => set({ pushTiming: o.id })}>{o.label}</window.Chip>
+          ))}
+        </div>
+      </QuestionShell>
+    );
+  }
+
+  return <WelcomeCard profile={profile} onEnter={onComplete} />;
+}
+
+Object.assign(window, { Onboarding });
+  </script>
+
+  <!-- ============================================================
+       prematch (FR-02)
+       ============================================================ -->
+  <script type="text/babel">
+function fmtClock(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function LockScreenPush({ onOpen, profile }) {
+  const [show, setShow] = React.useState(false);
+  React.useEffect(() => { const id = setTimeout(() => setShow(true), 700); return () => clearTimeout(id); }, []);
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(130% 80% at 50% 0%, #1b2350 0%, #0a0f22 55%, #04060e 100%)' }} />
+      <window.ParticleBg count={10} />
+      <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', paddingTop: 92 }}>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', letterSpacing: 1 }}>5月30日 周六</div>
+        <div className="mono" style={{ fontSize: 78, fontWeight: 700, lineHeight: 1, marginTop: 2, letterSpacing: -2 }}>19:30</div>
+      </div>
+      <div style={{ position: 'absolute', left: 12, right: 12, top: 230, zIndex: 3 }}>
+        <button className="btn glass" onClick={onOpen} style={{
+          width: '100%', textAlign: 'left', borderRadius: 20, padding: '14px 15px',
+          display: 'flex', gap: 12, alignItems: 'flex-start',
+          transform: show ? 'translateY(0)' : 'translateY(-24px)', opacity: show ? 1 : 0,
+          transition: 'all .5s cubic-bezier(.2,.9,.3,1.1)', border: '1px solid var(--stroke-strong)',
+        }}>
+          <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(160deg,#1b2243,#0c1124)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🐶</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink-faint)' }}>
+              <span>赛事搭子</span><span>现在</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, marginTop: 3, lineHeight: 1.3 }}>泉水指挥官：TES vs JDG 30 分钟后开团！</div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-dim)', marginTop: 3 }}>天王山之战，速效救心丸备好了吗？点我进赛前阵地 💊</div>
+          </div>
+        </button>
+        <div style={{ textAlign: 'center', marginTop: 14, fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
+          {show ? '← 滑动通知打开 App' : ''}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrematchArena({ profile, onEnterLive }) {
+  const P = window.PREMATCH;
+  const [sec, setSec] = React.useState(P.countdownSec - 1);
+  const [toast, setToast] = React.useState(null);
+  const [optedOut, setOptedOut] = React.useState(false);
+  React.useEffect(() => {
+    const id = setInterval(() => setSec(s => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const flash = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
+
+  return (
+    <window.Screen particleCount={12}>
+      <div style={{ padding: '60px 20px 30px', minHeight: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="disp glow-cyan" style={{ fontSize: 11.5, letterSpacing: 1.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>赛前阵地 · pre-match</div>
+          <span style={{ fontSize: 11, color: 'var(--ink-faint)' }}>{P.league}</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginTop: 14 }}>
+          <window.DogAvatar size={36} speaking />
+          <div style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.4 }}>
+            天王山来了，<b className="glow-orange">速效救心丸</b>我帮你备好了。今天稳一手？
+          </div>
+        </div>
+
+        <div className="glass anim-slideup" style={{ marginTop: 18, borderRadius: 22, padding: '22px 18px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--ink-faint)', letterSpacing: 1 }}>距离开赛</div>
+          <div className="mono glow-accent" style={{ textAlign: 'center', fontSize: 46, fontWeight: 700, lineHeight: 1.1, letterSpacing: -1 }}>{fmtClock(sec)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <window.TeamCrest team={P.home} size={62} />
+              <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>主队</span>
+            </div>
+            <div className="title-stroke" style={{ fontSize: 28 }}>VS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <window.TeamCrest team={P.away} size={62} />
+              <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>客队</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ink-faint)', marginTop: 14 }}>{P.watchOdds} · {P.h2h}</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+          {[P.home, P.away].map(tid => {
+            const tm = window.TEAMS[tid];
+            return (
+              <div key={tid} className="glass" style={{ borderRadius: 16, padding: '12px 12px' }}>
+                <div style={{ fontWeight: 800, color: tm.color, fontSize: 14 }} className="disp">{tm.name}</div>
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {tm.roster.map(r => (
+                    <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: 'var(--ink-faint)' }}>{r.role}</span>
+                      <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{r.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="glass" style={{ marginTop: 14, borderRadius: 18, padding: '16px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+            <span>🔮</span> 搭子的赛前预测
+          </div>
+          <window.VsBar home={P.home} away={P.away} homeVal={P.prediction.home} awayVal={P.prediction.away} />
+          <div style={{ fontSize: 12.5, color: 'var(--ink-dim)', marginTop: 12, lineHeight: 1.5 }}>
+            {P.prediction.note}。<span className="glow-orange">先立个 flag——下路对位咱们赢。</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <window.GhostButton onClick={() => flash('已生成战报海报，可分享到朋友圈')} style={{ flex: 1 }}>📤 一键分享</window.GhostButton>
+          <window.GhostButton onClick={() => flash('已喊你的开黑队友来看球')} style={{ flex: 1 }}>👥 提醒好友</window.GhostButton>
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <window.PrimaryButton onClick={onEnterLive}>进入赛中陪伴 →</window.PrimaryButton>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 18 }}>
+          {!optedOut ? (
+            <button className="btn" onClick={() => { setOptedOut(true); flash('好嘞，这场不烦你了 🤐'); }}
+              style={{ background: 'transparent', color: 'var(--ink-faint)', fontSize: 12, textDecoration: 'underline', padding: 6 }}>
+              我不想看这场比赛
+            </button>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>已取消本场后续推送</div>
+          )}
+        </div>
+      </div>
+
+      {toast && (
+        <div className="glass anim-pop" style={{ position: 'absolute', left: '50%', bottom: 40, transform: 'translateX(-50%)', zIndex: 60,
+          padding: '11px 18px', borderRadius: 999, fontSize: 13, whiteSpace: 'nowrap', border: '1px solid var(--stroke-strong)' }}>
+          {toast}
+        </div>
+      )}
+    </window.Screen>
+  );
+}
+
+function Prematch({ profile, onEnterLive, startAt }) {
+  const [step, setStep] = React.useState(startAt || 'lock');
+  if (step === 'lock') return <LockScreenPush profile={profile} onOpen={() => setStep('arena')} />;
+  return <PrematchArena profile={profile} onEnterLive={onEnterLive} />;
+}
+
+Object.assign(window, { Prematch, PrematchArena, LockScreenPush });
+  </script>
+
+  <!-- ============================================================
+       livematch (FR-03)
+       ============================================================ -->
+  <script type="text/babel">
+const STATE_BY_TURN = [
+  { kills: '0-0', gold: '持平',     note: 'BP 阶段' },
+  { kills: '0-1', gold: 'JDG +0.5k', note: '一血被拿' },
+  { kills: '2-1', gold: 'TES +0.3k', note: '小龙团反杀' },
+  { kills: '6-1', gold: 'TES +4.2k', note: '大龙团团灭' },
+  { kills: '6-3', gold: 'TES +2.0k', note: '高地告破' },
+  { kills: '7-7', gold: 'JDG +1.5k', note: '二次团崩盘' },
+  { kills: '11-8', gold: 'TES +5.8k', note: '大龙团翻盘' },
+  { kills: '13-8', gold: '胜',       note: '推平水晶' },
+];
+
+const IDLE_LINES = [
+  '哎你倒是说话啊，这运营期闷得我打哈欠了 😪',
+  '冷场了啊兄弟，赌一手：下一波团谁先开？我压咱们。',
+  '别光盯着看，聊两句——你觉得这把该不该换 369 上场？',
+];
+
+function ContextBar({ turn, st }) {
+  return (
+    <div className="glass" style={{ position: 'relative', zIndex: 30, margin: '0 12px', borderRadius: 16, padding: '9px 13px',
+      display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--emo-anger)', fontWeight: 800 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 9, background: 'var(--emo-anger)', boxShadow: '0 0 8px var(--emo-anger)', animation: 'breathe 1.2s infinite' }} />LIVE
+      </span>
+      <span className="mono" style={{ fontSize: 12, color: 'var(--ink-dim)' }}>{turn ? turn.matchTime : "BP"}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <span style={{ fontWeight: 800, color: '#d83a3a', fontSize: 14 }} className="disp">TES</span>
+        <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>{st.kills}</span>
+        <span style={{ fontWeight: 800, color: '#c69a3a', fontSize: 14 }} className="disp">JDG</span>
+      </div>
+      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ink-faint)' }} className="mono">{st.gold}</span>
+    </div>
+  );
+}
+
+function EventTicker({ text }) {
+  return (
+    <div key={text} className="anim-slideup" style={{ position: 'relative', zIndex: 25, textAlign: 'center', margin: '12px 0 4px' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--ink-faint)', background: 'rgba(0,0,0,0.3)', padding: '4px 12px', borderRadius: 999, border: '1px solid var(--stroke)' }}>
+        ⚔️ {text}
+      </span>
+    </div>
+  );
+}
+
+function LiveMatch({ profile, t, onFinish }) {
+  const TL = window.TIMELINE;
+  const [msgs, setMsgs] = React.useState([]);
+  const [turnIdx, setTurnIdx] = React.useState(0);
+  const [recording, setRecording] = React.useState(false);
+  const [thinking, setThinking] = React.useState(false);
+  const [fx, setFx] = React.useState(null);
+  const [shaking, setShaking] = React.useState(false);
+  const [cold, setCold] = React.useState(false);
+  const [flags, setFlags] = React.useState([]);
+  const [curState, setCurState] = React.useState(STATE_BY_TURN[0]);
+  const [curTurn, setCurTurn] = React.useState(null);
+  const [proactiveUsed, setProactiveUsed] = React.useState(false);
+  const scrollRef = React.useRef(null);
+  const idleRef = React.useRef(null);
+  const recRef = React.useRef(false);
+  const uidRef = React.useRef(0);
+  const nid = () => ++uidRef.current;
+
+  const finished = turnIdx >= TL.length;
+
+  React.useEffect(() => {
+    setMsgs([{ who: 'agent', text: '来了来了，位置给你占好了。今天 TES vs JDG，稳一手——有事儿喊我，按住下面那个钮说话就行。', id: nid() }]);
+  }, []);
+
+  React.useEffect(() => {
+    const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight + 400;
+  }, [msgs, thinking]);
+
+  const armIdle = () => {
+    clearTimeout(idleRef.current);
+    if (finished || proactiveUsed) return;
+    idleRef.current = setTimeout(() => {
+      setProactiveUsed(true);
+      setMsgs(m => [...m, { who: 'agent', proactive: true, text: IDLE_LINES[Math.min(turnIdx, IDLE_LINES.length - 1)], id: nid() }]);
+    }, 13000);
+  };
+  React.useEffect(() => { armIdle(); return () => clearTimeout(idleRef.current); }, [turnIdx, proactiveUsed, finished]);
+
+  const playTurn = () => {
+    if (finished || thinking) return;
+    clearTimeout(idleRef.current);
+    const turn = TL[turnIdx];
+    const st = STATE_BY_TURN[turnIdx] || curState;
+    setCurState(st);
+    setCurTurn(turn);
+
+    setMsgs(m => [...m, { who: 'user', text: turn.user, emotion: turn.emotion, intensity: turn.intensity, golden: false, id: nid() }]);
+
+    const strong = turn.intensity >= 4;
+    if (strong) setFx({ emotion: turn.emotion, id: nid() });
+
+    setThinking(true);
+    setTimeout(() => {
+      setThinking(false);
+      setMsgs(m => [...m, {
+        who: 'agent', text: turn.agent, golden: turn.golden,
+        flag: turn.flag, flagResolve: turn.flagResolve, tts: true, id: nid(),
+      }]);
+      if (turn.flag) setFlags(f => [...f, turn.flag.content]);
+      if (turn.flagResolve) setFlags(f => f.filter(x => x !== turn.flagResolve.content));
+      if (turn.golden) setMsgs(m => m.map(x => (x.who === 'user' && x.text === turn.user ? { ...x, golden: true } : x)));
+      setProactiveUsed(false);
+      setTurnIdx(i => i + 1);
+    }, strong ? 1100 : 800);
+  };
+
+  const startRec = (e) => { e && e.preventDefault(); if (finished || thinking) return; recRef.current = true; setRecording(true); clearTimeout(idleRef.current); };
+  const stopRec = (e) => { e && e.preventDefault(); if (!recRef.current) return; recRef.current = false; setRecording(false); playTurn(); };
+
+  const nextLine = !finished ? TL[turnIdx].user : null;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg-grad)' }}>
+      <window.ParticleBg count={8} />
+
+      <div style={{ paddingTop: 58, position: 'relative', zIndex: 30 }}>
+        <ContextBar turn={curTurn} st={curState} />
+        {flags.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px 0' }} className="no-sb">
+            {flags.map((f, i) => (
+              <span key={i} style={{ flexShrink: 0, fontSize: 11, color: 'var(--accent-2)', background: 'color-mix(in oklab, var(--accent-2) 12%, transparent)',
+                border: '1px dashed color-mix(in oklab, var(--accent-2) 50%, transparent)', borderRadius: 999, padding: '3px 10px' }}>🚩 {f}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={shaking ? 'shake' : ''} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <div ref={scrollRef} className="no-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '14px 14px 8px' }}>
+          {curTurn && curTurn.event && <EventTicker text={curTurn.event} />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {msgs.map(m => (
+              <div key={m.id} style={{ display: 'flex', gap: 9, alignItems: 'flex-end', flexDirection: m.who === 'agent' ? 'row' : 'row-reverse' }}>
+                {m.who === 'agent' && <window.DogAvatar size={32} ring={false} glow={false} />}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: m.who === 'agent' ? 'flex-start' : 'flex-end', minWidth: 0 }}>
+                  {m.proactive && <span style={{ fontSize: 10.5, color: 'var(--accent-2)', marginBottom: 3 }}>💬 搭子主动暖场</span>}
+                  {m.tts && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <window.VoiceWave height={11} bars={10} color="var(--accent-2)" />
+                    <span style={{ fontSize: 10, color: 'var(--ink-faint)' }}>TTS 播报</span>
+                  </div>}
+                  <window.ChatBubble who={m.who} text={m.text} emotion={m.emotion} intensity={m.intensity}
+                    golden={m.golden} flag={m.flag} flagResolve={m.flagResolve} bubbleStyle={t.bubbleStyle} />
+                </div>
+              </div>
+            ))}
+            {thinking && (
+              <div style={{ display: 'flex', gap: 9, alignItems: 'flex-end' }}>
+                <window.DogAvatar size={32} ring={false} glow={false} speaking />
+                <div className="glass" style={{ borderRadius: '16px 16px 16px 5px', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {[0, 1, 2].map(i => <span key={i} style={{ width: 7, height: 7, borderRadius: 9, background: 'var(--ink-faint)', animation: `breathe 1s ${i * 0.15}s infinite` }} />)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="cold-veil" style={{ opacity: cold ? 1 : 0, pointerEvents: 'none' }} />
+        <window.EmotionFX fx={fx} fxStyle={t.fxStyle} intensity={t.fxIntensity} soundOn={t.sound}
+          onShake={() => { setShaking(true); setTimeout(() => setShaking(false), 520); }}
+          onColdVeil={setCold} />
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 30, padding: '10px 18px 26px', background: 'linear-gradient(transparent, var(--bg0) 40%)' }}>
+        {!finished ? (
+          <>
+            <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--ink-faint)', marginBottom: 10, minHeight: 16 }}>
+              {recording ? '🎙️ 松开发送 · STT 识别中…' : <>按住说出： <span style={{ color: 'var(--ink-dim)' }}>“{nextLine}”</span></>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                onPointerDown={startRec} onPointerUp={stopRec} onPointerLeave={(e) => recording && stopRec(e)}
+                onContextMenu={(e) => e.preventDefault()}
+                className="btn"
+                style={{
+                  width: '100%', maxWidth: 320, height: 60, borderRadius: 999,
+                  background: recording ? 'linear-gradient(135deg, var(--emo-anger), var(--orange))' : 'linear-gradient(135deg, var(--accent), color-mix(in oklab,var(--accent),var(--accent-2) 50%))',
+                  color: '#fff', fontSize: 16, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  boxShadow: recording ? '0 0 0 8px color-mix(in oklab,var(--emo-anger) 25%, transparent)' : '0 8px 26px var(--accent-glow)',
+                  transform: recording ? 'scale(1.02)' : 'scale(1)',
+                  touchAction: 'none', userSelect: 'none',
+                }}>
+                {recording ? <><window.VoiceWave height={20} bars={16} color="#fff" /> 正在说话</> : <>🎙️ 按住说话</>}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="anim-slideup">
+            <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-dim)', marginBottom: 12 }}>
+              🏆 比赛结束 · TES 13-8 拿下天王山！搭子已经把高光攒好了。
+            </div>
+            <window.PrimaryButton onClick={onFinish}>生成赛后图文 →</window.PrimaryButton>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { LiveMatch });
+  </script>
+
+  <!-- ============================================================
+       postmatch (FR-04)
+       ============================================================ -->
+  <script type="text/babel">
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+function EmotionCurve({ curveStyle = 'smooth' }) {
+  const TL = window.TIMELINE, EMO = window.EMOTION;
+  const W = 340, H = 168, x0 = 18, x1 = 322, yTop = 26, yBot = 138;
+  const n = TL.length;
+  const pts = TL.map((d, i) => ({
+    x: x0 + (i * (x1 - x0)) / (n - 1),
+    y: yBot - ((d.intensity - 1) / 4) * (yBot - yTop),
+    emo: d.emotion, raw: EMO[d.emotion].raw, golden: d.golden, mt: d.matchTime, int: d.intensity,
+  }));
+  const linePath = smoothPath(pts);
+  const areaPath = linePath + ` L ${pts[n - 1].x} ${yBot} L ${pts[0].x} ${yBot} Z`;
+  const stepPath = (() => {
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < n; i++) d += ` L ${pts[i].x} ${pts[i - 1].y} L ${pts[i].x} ${pts[i].y}`;
+    return d;
+  })();
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id="curveArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 1, 2, 3, 4].map(i => {
+        const yy = yBot - (i / 4) * (yBot - yTop);
+        return <line key={i} x1={x0} y1={yy} x2={x1} y2={yy} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />;
+      })}
+
+      {curveStyle === 'bars' && pts.map((p, i) => (
+        <rect key={i} x={p.x - 9} y={p.y} width={18} height={yBot - p.y} rx={5}
+          fill={p.raw} opacity={p.golden ? 0.95 : 0.6} />
+      ))}
+
+      {curveStyle === 'smooth' && (
+        <>
+          <path d={areaPath} fill="url(#curveArea)" />
+          <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" />
+        </>
+      )}
+
+      {curveStyle === 'stepped' && (
+        <path d={stepPath} fill="none" stroke="var(--accent-2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+
+      {pts.map((p, i) => (
+        <g key={i}>
+          {p.golden && <circle cx={p.x} cy={p.y} r={9} fill={p.raw} opacity={0.25} />}
+          <circle cx={p.x} cy={p.y} r={p.golden ? 5 : 3.2} fill={p.raw}
+            stroke="#0a0f1e" strokeWidth={p.golden ? 1.5 : 1}
+            style={{ filter: p.golden ? `drop-shadow(0 0 5px ${p.raw})` : 'none' }} />
+          <text x={p.x} y={H - 6} textAnchor="middle" fontSize="8" fill="var(--ink-faint)" fontFamily="var(--font-mono)">{p.mt}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function QualityChips() {
+  const items = [['个性', '只有你能发'], ['情绪精准', '锚点是你的原话'], ['可传播', '自带社交货币']];
+  return (
+    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      {items.map(([a, b]) => (
+        <div key={a} style={{ flex: 1, padding: '8px 8px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--stroke)', textAlign: 'center' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--accent-2)' }}>✓ {a}</div>
+          <div style={{ fontSize: 9.5, color: 'var(--ink-faint)', marginTop: 2 }}>{b}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Poster({ title, posterStyle, selected, profile }) {
+  const player = (profile.players && profile.players[0]) || 'JackeyLove';
+  const anchorQuote = title.id === 'a' ? '团灭！这波血赚！' : title.id === 'b' ? '破防了真的…' : 'TES 牛逼！';
+  const meme = '大龙蹲他翻盘 · flag 兑现 ✅';
+
+  const ring = selected ? { boxShadow: '0 0 0 2.5px var(--accent), 0 12px 30px var(--accent-glow)' } : { boxShadow: '0 8px 22px rgba(0,0,0,0.4)' };
+  const baseCard = {
+    width: 230, height: 320, flexShrink: 0, borderRadius: 20, overflow: 'hidden',
+    position: 'relative', scrollSnapAlign: 'center', transition: 'box-shadow .2s, transform .2s',
+    transform: selected ? 'translateY(-4px)' : 'none', ...ring,
+  };
+
+  if (posterStyle === 'editorial') {
+    return (
+      <div style={{ ...baseCard, background: 'linear-gradient(165deg,#0e1330,#070a18)', border: '1px solid var(--stroke-strong)', padding: 18, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="mono" style={{ fontSize: 9, color: 'var(--ink-faint)', letterSpacing: 1 }}>毒奶观察室 / 05.30</span>
+          <window.TeamCrest team="TES" size={28} />
+        </div>
+        <div style={{ marginTop: 'auto' }}>
+          <div className="disp glow-orange" style={{ fontSize: 13, letterSpacing: 1 }}>“{anchorQuote}”</div>
+          <div className="disp" style={{ fontSize: 30, fontStyle: 'italic', lineHeight: 1.05, marginTop: 6 }}>{title.hook}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-dim)', marginTop: 6 }}>{title.sub} · {player} MVP</div>
+          <div style={{ height: 1, background: 'var(--stroke)', margin: '12px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-faint)' }} className="mono">
+            <span>TES 13 — 8 JDG</span><span>{meme.split(' · ')[1]}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (posterStyle === 'ticket') {
+    return (
+      <div style={{ ...baseCard, background: 'linear-gradient(160deg,#15193a,#0a0d20)', border: '1px dashed var(--stroke-strong)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '16px 16px 12px', borderBottom: '1.5px dashed var(--stroke-strong)', position: 'relative' }}>
+          <div className="mono" style={{ fontSize: 9, color: 'var(--accent-2)', letterSpacing: 1 }}>ADMIT ONE · 毒奶观察室</div>
+          <div className="title-stroke" style={{ fontSize: 27, marginTop: 8, lineHeight: 1 }}>{title.hook}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-dim)', marginTop: 6 }}>“{anchorQuote}” — 我说的</div>
+        </div>
+        <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <window.TeamCrest team="TES" size={40} />
+            <div className="mono" style={{ fontSize: 22, fontWeight: 700 }}>13–8</div>
+            <window.TeamCrest team="JDG" size={40} />
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--accent-2)' }}>{meme}</div>
+          <div className="mono" style={{ fontSize: 8, color: 'var(--ink-faint)', letterSpacing: 2 }}>▌▎█ ▌▎ █▌ {player.toUpperCase()}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...baseCard, background: 'linear-gradient(155deg,#3a1020,#160b22 55%,#070a18)' }}>
+      <window.ParticleBg count={8} />
+      <div style={{ position: 'absolute', inset: 0, padding: 18, display: 'flex', flexDirection: 'column', zIndex: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--emo-ecstasy)' }}>毒奶观察室</span>
+          <window.PlayerAvatar name={player} size={34} ringColor="var(--emo-ecstasy)" />
+        </div>
+        <div style={{ margin: 'auto 0' }}>
+          <div className="title-stroke" style={{ fontSize: 46, lineHeight: 0.95 }}>{title.hook}</div>
+          <div className="disp glow-orange" style={{ fontSize: 16, marginTop: 8, fontStyle: 'italic' }}>{title.sub}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-dim)', marginBottom: 6 }}>“{anchorQuote}”</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mono glow-accent" style={{ fontSize: 18, fontWeight: 700 }}>TES 13–8</span>
+            <span style={{ fontSize: 10, color: 'var(--accent-2)' }}>{meme}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PostMatch({ profile, t, onRestart }) {
+  const [posterIdx, setPosterIdx] = React.useState(2);
+  const [tier, setTier] = React.useState('light');
+  const [toast, setToast] = React.useState(null);
+  const flash = (m) => { setToast(m); setTimeout(() => setToast(null), 2000); };
+  const caption = window.CAPTIONS[tier];
+
+  const copy = () => {
+    try {
+      navigator.clipboard.writeText(caption);
+    } catch (e) {
+      const ta = document.createElement('textarea'); ta.value = caption; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+    flash('文案已复制，去粘贴 📋');
+  };
+
+  return (
+    <window.Screen particleCount={10}>
+      <div style={{ padding: '58px 18px 30px', minHeight: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div className="disp glow-cyan" style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>赛后图文 · recap</div>
+            <div className="disp" style={{ fontSize: 26, fontStyle: 'italic' }}>本场战报</div>
+          </div>
+          <window.DogAvatar size={42} />
+        </div>
+
+        <div className="glass" style={{ marginTop: 16, borderRadius: 20, padding: '14px 12px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>📈 你的情绪曲线</span>
+            <span style={{ fontSize: 10.5, color: 'var(--ink-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>平淡→愤怒→狂喜→破防→翻盘</span>
+          </div>
+          <EmotionCurve curveStyle={t.curveStyle} />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 9 }}>🎙️ 情绪峰值 · 你的原话</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {window.TIMELINE.filter(x => x.golden).map((x, i) => (
+              <div key={i} className="glass" style={{ borderRadius: 14, padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', width: 28 }}>{x.matchTime}</span>
+                <window.EmotionBadge emotion={x.emotion} intensity={x.intensity} compact />
+                <span style={{ fontSize: 13, flex: 1, color: 'var(--ink)' }}>“{x.user}”</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>🖼️ 三选一 · 你的专属海报</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-faint)', whiteSpace: 'nowrap' }}>{posterIdx + 1} / 3</span>
+          </div>
+          <div className="no-sb" style={{ display: 'flex', gap: 14, overflowX: 'auto', padding: '4px 4px 8px', scrollSnapType: 'x mandatory', margin: '0 -18px', paddingLeft: 18, paddingRight: 18 }}>
+            {window.POSTER_TITLES.map((p, i) => (
+              <div key={p.id} onClick={() => setPosterIdx(i)}>
+                <Poster title={p} posterStyle={t.posterStyle} selected={posterIdx === i} profile={profile} />
+              </div>
+            ))}
+          </div>
+          <QualityChips />
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            {[['light', '轻量 · 一句话'], ['deep', '深度 · 叙事回顾']].map(([id, label]) => (
+              <button key={id} className="btn" onClick={() => setTier(id)} style={{
+                flex: 1, padding: '10px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                background: tier === id ? 'color-mix(in oklab, var(--accent) 22%, transparent)' : 'var(--surface)',
+                border: tier === id ? '1.5px solid var(--accent)' : '1px solid var(--stroke)',
+                color: tier === id ? '#fff' : 'var(--ink-dim)',
+              }}>{label}</button>
+            ))}
+          </div>
+          <div className="glass" style={{ borderRadius: 16, padding: '14px 16px', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>
+            {caption}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <window.GhostButton onClick={copy} style={{ flex: 1 }}>📋 复制文案</window.GhostButton>
+          <window.GhostButton onClick={() => flash('已保存海报到相册')} style={{ flex: 1 }}>⬇️ 保存图</window.GhostButton>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <window.PrimaryButton onClick={() => flash('已分享到朋友圈 🎉')}>一键发朋友圈</window.PrimaryButton>
+        </div>
+
+        <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginTop: 18 }}>
+          {['朋友圈', '微博', '虎扑'].map(s => (
+            <span key={s} style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{s}</span>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button className="btn" onClick={onRestart} style={{ background: 'transparent', color: 'var(--ink-faint)', fontSize: 12, textDecoration: 'underline', padding: 6 }}>
+            ↻ 重新走一遍 Demo
+          </button>
+        </div>
+      </div>
+
+      {toast && (
+        <div className="glass anim-pop" style={{ position: 'absolute', left: '50%', bottom: 40, transform: 'translateX(-50%)', zIndex: 60,
+          padding: '11px 18px', borderRadius: 999, fontSize: 13, whiteSpace: 'nowrap', border: '1px solid var(--stroke-strong)' }}>
+          {toast}
+        </div>
+      )}
+    </window.Screen>
+  );
+}
+
+Object.assign(window, { PostMatch, EmotionCurve, Poster });
+  </script>
+
+  <!-- ============================================================
+       app shell · stage rail · tweaks
+       ============================================================ -->
+  <script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TWEAK_DEFAULTS = {
+  theme: 'neon',
+  bubbleStyle: 'glass',
+  fxStyle: 'mixed',
+  fxIntensity: 7,
+  sound: true,
+  curveStyle: 'smooth',
+  posterStyle: 'bold',
+};
+
+const STAGES = [
+  { id: 'onboarding', label: '注册', icon: '🐶' },
+  { id: 'prematch', label: '赛前', icon: '⏱️' },
+  { id: 'live', label: '赛中', icon: '🎙️' },
+  { id: 'post', label: '赛后', icon: '🖼️' },
+];
+
+function useFitScale(designW, designH) {
+  const [s, setS] = useState(1);
+  useEffect(() => {
+    const calc = () => {
+      const sc = Math.min((window.innerWidth - 96) / designW, (window.innerHeight - 28) / designH, 1);
+      setS(Math.max(0.42, sc));
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, [designW, designH]);
+  return s;
+}
+
+function FlowRail({ stage, setStage }) {
+  return (
+    <div style={{
+      position: 'fixed', left: 14, top: '50%', transform: 'translateY(-50%)', zIndex: 200,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      {STAGES.map((s) => {
+        const on = stage === s.id;
+        return (
+          <button key={s.id} className="btn" onClick={() => setStage(s.id)} title={s.label}
+            style={{
+              width: 52, height: 52, borderRadius: 15, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 1,
+              background: on ? 'color-mix(in oklab, var(--accent) 26%, #0c1020)' : 'rgba(16,20,36,0.7)',
+              border: on ? '1.5px solid var(--accent)' : '1px solid rgba(255,255,255,0.12)',
+              boxShadow: on ? '0 0 18px var(--accent-glow)' : 'none',
+              backdropFilter: 'blur(8px)',
+            }}>
+            <span style={{ fontSize: 17 }}>{s.icon}</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: on ? '#fff' : 'rgba(226,231,255,0.55)' }}>{s.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function App() {
+  const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+  const [stage, setStage] = useState('onboarding');
+  const [obKey, setObKey] = useState(0);
+  const [profile, setProfile] = useState({ teams: [], players: [], events: [], pushChannels: [], pushTiming: null });
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const scale = useFitScale(402, 874);
+
+  useEffect(() => { window.SFX.setEnabled(t.sound); }, [t.sound]);
+
+  const goStage = (s) => { window.SFX.unlock(); setStage(s); };
+
+  let screen = null;
+  if (stage === 'onboarding') {
+    screen = <window.Onboarding key={obKey} profile={profile} setProfile={setProfile} t={t}
+      onComplete={() => goStage('prematch')} />;
+  } else if (stage === 'prematch') {
+    screen = <window.Prematch profile={profile} onEnterLive={() => goStage('live')} />;
+  } else if (stage === 'live') {
+    screen = <window.LiveMatch profile={profile} t={t} onFinish={() => goStage('post')} />;
+  } else {
+    screen = <window.PostMatch profile={profile} t={t}
+      onRestart={() => { setProfile({ teams: [], players: [], events: [], pushChannels: [], pushTiming: null }); setObKey(k => k + 1); goStage('onboarding'); }} />;
+  }
+
+  return (
+    <div data-theme={t.theme} onPointerDown={() => window.SFX.unlock()}
+      style={{ position: 'fixed', inset: 0, background: '#06070d', overflow: 'hidden', color: 'var(--ink)', fontFamily: 'var(--font-cjk)' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(80% 60% at 50% 0%, rgba(124,92,255,0.10), transparent 60%)', pointerEvents: 'none' }} />
+
+      <FlowRail stage={stage} setStage={goStage} />
+
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          <window.IOSDevice dark width={402} height={874}>
+            {screen}
+          </window.IOSDevice>
+        </div>
+      </div>
+
+      <button className="tweaks-toggle" title="调整设计" onClick={() => setTweaksOpen(o => !o)}>⚙</button>
+
+      <window.TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} title="设计调参">
+        <window.TweakSection label="视觉风格" />
+        <window.TweakRadio label="主题配色" value={t.theme}
+          options={[{ value: 'neon', label: '霓虹深空' }, { value: 'ember', label: '热血火线' }, { value: 'frost', label: '寒霜赛博' }]}
+          onChange={(v) => setTweak('theme', v)} />
+        <window.TweakRadio label="对话气泡" value={t.bubbleStyle}
+          options={[{ value: 'glass', label: '毛玻璃' }, { value: 'solid', label: '实色' }, { value: 'minimal', label: '极简' }]}
+          onChange={(v) => setTweak('bubbleStyle', v)} />
+
+        <window.TweakSection label="赛中互动特效" />
+        <window.TweakRadio label="狂喜特效" value={t.fxStyle}
+          options={[{ value: 'mixed', label: '混合' }, { value: 'confetti', label: '撒花彩带' }, { value: 'fireworks', label: '烟花金光' }]}
+          onChange={(v) => setTweak('fxStyle', v)} />
+        <window.TweakSlider label="特效强度" value={t.fxIntensity} min={1} max={10} step={1}
+          onChange={(v) => setTweak('fxIntensity', v)} />
+        <window.TweakToggle label="音效" value={t.sound} onChange={(v) => setTweak('sound', v)} />
+
+        <window.TweakSection label="赛后图文" />
+        <window.TweakRadio label="情绪曲线" value={t.curveStyle}
+          options={[{ value: 'smooth', label: '平滑曲线' }, { value: 'bars', label: '柱状' }, { value: 'stepped', label: '阶梯' }]}
+          onChange={(v) => setTweak('curveStyle', v)} />
+        <window.TweakRadio label="海报版式" value={t.posterStyle}
+          options={[{ value: 'bold', label: '大字' }, { value: 'editorial', label: '杂志' }, { value: 'ticket', label: '票根' }]}
+          onChange={(v) => setTweak('posterStyle', v)} />
+      </window.TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
