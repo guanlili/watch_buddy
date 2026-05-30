@@ -9,8 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeCardRouteImport } from './routes/welcome-card'
+import { Route as PreMatchRouteImport } from './routes/pre-match'
+import { Route as PostMatchRouteImport } from './routes/post-match'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MatchRouteImport } from './routes/match'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WelcomeCardRoute = WelcomeCardRouteImport.update({
+  id: '/welcome-card',
+  path: '/welcome-card',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreMatchRoute = PreMatchRouteImport.update({
+  id: '/pre-match',
+  path: '/pre-match',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostMatchRoute = PostMatchRouteImport.update({
+  id: '/post-match',
+  path: '/post-match',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatchRoute = MatchRouteImport.update({
+  id: '/match',
+  path: '/match',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +49,102 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
+  '/onboarding': typeof OnboardingRoute
+  '/post-match': typeof PostMatchRoute
+  '/pre-match': typeof PreMatchRoute
+  '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
+  '/onboarding': typeof OnboardingRoute
+  '/post-match': typeof PostMatchRoute
+  '/pre-match': typeof PreMatchRoute
+  '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
+  '/onboarding': typeof OnboardingRoute
+  '/post-match': typeof PostMatchRoute
+  '/pre-match': typeof PreMatchRoute
+  '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/match'
+    | '/onboarding'
+    | '/post-match'
+    | '/pre-match'
+    | '/welcome-card'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/match'
+    | '/onboarding'
+    | '/post-match'
+    | '/pre-match'
+    | '/welcome-card'
+  id:
+    | '__root__'
+    | '/'
+    | '/match'
+    | '/onboarding'
+    | '/post-match'
+    | '/pre-match'
+    | '/welcome-card'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MatchRoute: typeof MatchRoute
+  OnboardingRoute: typeof OnboardingRoute
+  PostMatchRoute: typeof PostMatchRoute
+  PreMatchRoute: typeof PreMatchRoute
+  WelcomeCardRoute: typeof WelcomeCardRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome-card': {
+      id: '/welcome-card'
+      path: '/welcome-card'
+      fullPath: '/welcome-card'
+      preLoaderRoute: typeof WelcomeCardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-match': {
+      id: '/pre-match'
+      path: '/pre-match'
+      fullPath: '/pre-match'
+      preLoaderRoute: typeof PreMatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/post-match': {
+      id: '/post-match'
+      path: '/post-match'
+      fullPath: '/post-match'
+      preLoaderRoute: typeof PostMatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/match': {
+      id: '/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof MatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +157,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MatchRoute: MatchRoute,
+  OnboardingRoute: OnboardingRoute,
+  PostMatchRoute: PostMatchRoute,
+  PreMatchRoute: PreMatchRoute,
+  WelcomeCardRoute: WelcomeCardRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
