@@ -5,15 +5,14 @@ import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { useAppStore } from "@/lib/mock/store";
 import type { FanType, PushChannel } from "@/lib/mock/types";
-import { Check, ChevronRight, Phone, Mail, MessageCircle } from "lucide-react";
+import { TOURNAMENTS } from "@/lib/mock/types";
+import { Check, ChevronRight, Phone, Mail, MessageCircle, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "毒奶观察室 · 注册" }] }),
   component: Onboarding,
 });
 
-const TEAMS = ["TES", "JDG", "BLG", "WBG", "T1", "GenG", "HLE", "DK", "AG", "TTG", "Faze", "NaVi", "纯路人"];
-const GAMES = ["英雄联盟", "DOTA2", "CS2", "瓦罗兰特", "王者荣耀", "永劫无间"];
 const CHANNELS: { value: PushChannel; label: string; icon: typeof Phone }[] = [
   { value: "wechat", label: "微信推送", icon: MessageCircle },
   { value: "app", label: "App 通知", icon: Phone },
@@ -28,38 +27,65 @@ const FAN_TYPES: { value: FanType; label: string; desc: string }[] = [
 function Onboarding() {
   const nav = useNavigate();
   const setProfile = useAppStore((s) => s.setProfile);
-  const [step, setStep] = useState(0); // 0: login, 1-4: questions
-  const [teams, setTeams] = useState<string[]>([]);
-  const [players, setPlayers] = useState("");
-  const [games, setGames] = useState<string[]>([]);
+  const [step, setStep] = useState(0); // 0: login, 1: tournament, 2: team, 3: player, 4: preferences
+  
+  // 状态
+  const [tournament, setTournament] = useState<string>("");
+  const [customTournament, setCustomTournament] = useState<string>("");
+  const [showCustomTournament, setShowCustomTournament] = useState(false);
+  
+  const [team, setTeam] = useState<string>("");
+  const [customTeam, setCustomTeam] = useState<string>("");
+  const [showCustomTeam, setShowCustomTeam] = useState(false);
+  
+  const [player, setPlayer] = useState<string>("");
+  const [customPlayer, setCustomPlayer] = useState<string>("");
+  const [showCustomPlayer, setShowCustomPlayer] = useState(false);
+  
   const [channels, setChannels] = useState<PushChannel[]>(["app"]);
   const [timing, setTiming] = useState(30);
   const [fanType, setFanType] = useState<FanType>("diehard");
   const [aiQuip, setAiQuip] = useState<string | null>(null);
 
-  const toggleTeam = (t: string) => {
-    setTeams((cur) => {
-      if (cur.includes(t)) return cur.filter((x) => x !== t);
-      if (cur.length >= 3) return cur;
-      const next = [...cur, t];
-      setAiQuip(t === "纯路人" ? "纯路人？那今天我陪你押谁赢谁，反正菜的我喷狠的我夸。" : `${t}？行家啊，选完别改啊，万一我下次反向预测，别怪我毒奶你家主队。`);
-      return next;
-    });
-  };
+  // 获取当前选中的赛事数据
+  const selectedTournament = TOURNAMENTS.find(t => t.id === tournament);
+  
+  // 获取当前选中的主队数据
+  const selectedTeam = selectedTournament?.teams.find(t => t.id === team);
 
-  const toggleGame = (g: string) => {
-    setGames((c) => (c.includes(g) ? c.filter((x) => x !== g) : [...c, g]));
-  };
   const toggleChannel = (c: PushChannel) => {
     setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  };
+
+  const selectTournament = (id: string) => {
+    setTournament(id);
+    setTeam(""); // 重置主队
+    setPlayer(""); // 重置选手
+    setAiQuip(TOURNAMENTS.find(t => t.id === id) ? `${TOURNAMENTS.find(t => t.id === id)?.name}？行家啊，接下来选个主队吧。` : null);
+  };
+
+  const selectTeam = (id: string) => {
+    setTeam(id);
+    setPlayer(""); // 重置选手
+    const teamName = selectedTournament?.teams.find(t => t.id === id)?.name;
+    setAiQuip(teamName ? `${teamName}？有眼光！选个本命选手吧。` : null);
+  };
+
+  const selectPlayer = (id: string) => {
+    setPlayer(id);
+    const playerName = selectedTeam?.players.find(p => p.id === id)?.name;
+    setAiQuip(playerName ? `${playerName}！我也超喜欢他，准备好一起看比赛了吗？` : null);
   };
 
   const finish = () => {
     setProfile({
       nickname: "兄弟",
-      favoriteTeams: teams.length ? teams : ["纯路人"],
-      favoritePlayers: players ? players.split(/[,，、\s]+/).filter(Boolean) : [],
-      watchedGames: games.length ? games : ["英雄联盟"],
+      tournament,
+      team,
+      player,
+      customTournament: showCustomTournament ? customTournament : undefined,
+      customTeam: showCustomTeam ? customTeam : undefined,
+      customPlayer: showCustomPlayer ? customPlayer : undefined,
       pushChannels: channels,
       pushTiming: timing,
       fanType,
@@ -67,13 +93,13 @@ function Onboarding() {
     nav({ to: "/welcome-card" });
   };
 
-  const stepTitles = ["登录", "选主队", "选选手", "选赛事", "推送偏好"];
+  const stepTitles = ["登录", "选择赛事", "选择主队", "选择选手", "推送偏好"];
 
   return (
     <main className="relative min-h-screen px-4 py-10">
       <div className="mx-auto max-w-xl">
         {/* Progress chips */}
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-6 flex items-center gap-2 flex-wrap">
           {stepTitles.map((t, i) => (
             <div
               key={t}
@@ -123,24 +149,49 @@ function Onboarding() {
 
             {step === 1 && (
               <GlassCard glow="primary">
-                <h2 className="font-display text-2xl glow-text-primary">你是哪边的？</h2>
-                <p className="mt-1 text-sm text-muted-foreground">最多选 3 个，纯路人也算一队</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {TEAMS.map((t) => {
-                    const on = teams.includes(t);
-                    return (
+                <h2 className="font-display text-2xl glow-text-primary">关注哪个赛事？</h2>
+                <p className="mt-1 text-sm text-muted-foreground">选择你喜欢的赛事，或者自己添加</p>
+                
+                {!showCustomTournament ? (
+                  <>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {TOURNAMENTS.map((t) => {
+                        const on = tournament === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => selectTournament(t.id)}
+                            className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
+                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        );
+                      })}
                       <button
-                        key={t}
-                        onClick={() => toggleTeam(t)}
-                        className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
-                          on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
-                        }`}
+                        onClick={() => setShowCustomTournament(true)}
+                        className="flex items-center gap-1 rounded-xl px-4 py-2 border border-border bg-white/5 hover:bg-white/10 font-display text-sm uppercase tracking-wider transition"
                       >
-                        {t}
+                        <Plus className="h-4 w-4" /> 自定义
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-5">
+                    <input
+                      value={customTournament}
+                      onChange={(e) => setCustomTournament(e.target.value)}
+                      placeholder="输入赛事名称"
+                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                    />
+                    <div className="mt-3 flex gap-2">
+                      <NeonButton variant="ghost" onClick={() => { setShowCustomTournament(false); setCustomTournament(""); }}>取消</NeonButton>
+                      <NeonButton variant="accent" onClick={() => { setTournament("custom"); setAiQuip(`${customTournament}？好的，接下来选个主队吧。`); }}>确定</NeonButton>
+                    </div>
+                  </div>
+                )}
+
                 {aiQuip && (
                   <motion.div
                     key={aiQuip}
@@ -151,49 +202,128 @@ function Onboarding() {
                     🐶 {aiQuip}
                   </motion.div>
                 )}
-                <StepNav onBack={() => setStep(0)} onNext={() => { setAiQuip(null); setStep(2); }} disabled={teams.length === 0} />
+                
+                <StepNav onBack={() => setStep(0)} onNext={() => { setAiQuip(null); setStep(2); }} disabled={!tournament} />
               </GlassCard>
             )}
 
             {step === 2 && (
               <GlassCard glow="primary">
-                <h2 className="font-display text-2xl glow-text-primary">本命选手是谁？</h2>
-                <p className="mt-1 text-sm text-muted-foreground">输入名字，多个用空格隔开。跳过也行。</p>
-                <input
-                  value={players}
-                  onChange={(e) => setPlayers(e.target.value)}
-                  placeholder="Faker、Uzi、Donk…"
-                  className="mt-5 w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
-                />
-                <div className="mt-4 rounded-xl border-l-2 border-accent bg-accent/10 p-3 text-sm">
-                  🐶 没事，跳过的话我默认你最爱"赛后干饭型选手"。
-                </div>
-                <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} />
+                <h2 className="font-display text-2xl glow-text-primary">支持哪个队伍？</h2>
+                <p className="mt-1 text-sm text-muted-foreground">选择你的主队，或者自己添加</p>
+                
+                {!showCustomTeam ? (
+                  <>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {selectedTournament?.teams.map((t) => {
+                        const on = team === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => selectTeam(t.id)}
+                            className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
+                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setShowCustomTeam(true)}
+                        className="flex items-center gap-1 rounded-xl px-4 py-2 border border-border bg-white/5 hover:bg-white/10 font-display text-sm uppercase tracking-wider transition"
+                      >
+                        <Plus className="h-4 w-4" /> 自定义
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-5">
+                    <input
+                      value={customTeam}
+                      onChange={(e) => setCustomTeam(e.target.value)}
+                      placeholder="输入主队名称"
+                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                    />
+                    <div className="mt-3 flex gap-2">
+                      <NeonButton variant="ghost" onClick={() => { setShowCustomTeam(false); setCustomTeam(""); }}>取消</NeonButton>
+                      <NeonButton variant="accent" onClick={() => { setTeam("custom"); setAiQuip(`${customTeam}？有眼光！选个本命选手吧。`); }}>确定</NeonButton>
+                    </div>
+                  </div>
+                )}
+
+                {aiQuip && (
+                  <motion.div
+                    key={aiQuip}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 rounded-xl border-l-2 border-accent bg-accent/10 p-3 text-sm"
+                  >
+                    🐶 {aiQuip}
+                  </motion.div>
+                )}
+                
+                <StepNav onBack={() => setStep(1)} onNext={() => { setAiQuip(null); setStep(3); }} disabled={!team} />
               </GlassCard>
             )}
 
             {step === 3 && (
               <GlassCard glow="primary">
-                <h2 className="font-display text-2xl glow-text-primary">关注哪些赛事？</h2>
-                <p className="mt-1 text-sm text-muted-foreground">多选，我好知道啥时候给你推下饭操作集锦</p>
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  {GAMES.map((g) => {
-                    const on = games.includes(g);
-                    return (
+                <h2 className="font-display text-2xl glow-text-primary">本命选手是谁？</h2>
+                <p className="mt-1 text-sm text-muted-foreground">选择你最喜欢的选手，或者自己添加</p>
+                
+                {!showCustomPlayer ? (
+                  <>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {selectedTeam?.players.map((p) => {
+                        const on = player === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => selectPlayer(p.id)}
+                            className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
+                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
                       <button
-                        key={g}
-                        onClick={() => toggleGame(g)}
-                        className={`rounded-xl px-4 py-3 text-left font-display text-sm uppercase tracking-wider transition ${
-                          on ? "neon-border-accent bg-accent/30" : "border border-border bg-white/5 hover:bg-white/10"
-                        }`}
+                        onClick={() => setShowCustomPlayer(true)}
+                        className="flex items-center gap-1 rounded-xl px-4 py-2 border border-border bg-white/5 hover:bg-white/10 font-display text-sm uppercase tracking-wider transition"
                       >
-                        {on && <Check className="mb-1 h-3 w-3 text-accent" />}
-                        {g}
+                        <Plus className="h-4 w-4" /> 自定义
                       </button>
-                    );
-                  })}
-                </div>
-                <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} disabled={games.length === 0} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-5">
+                    <input
+                      value={customPlayer}
+                      onChange={(e) => setCustomPlayer(e.target.value)}
+                      placeholder="输入选手名称"
+                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                    />
+                    <div className="mt-3 flex gap-2">
+                      <NeonButton variant="ghost" onClick={() => { setShowCustomPlayer(false); setCustomPlayer(""); }}>取消</NeonButton>
+                      <NeonButton variant="accent" onClick={() => { setPlayer("custom"); setAiQuip(`${customPlayer}！我也超喜欢他，准备好一起看比赛了吗？`); }}>确定</NeonButton>
+                    </div>
+                  </div>
+                )}
+
+                {aiQuip && (
+                  <motion.div
+                    key={aiQuip}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 rounded-xl border-l-2 border-accent bg-accent/10 p-3 text-sm"
+                  >
+                    🐶 {aiQuip}
+                  </motion.div>
+                )}
+                
+                <StepNav onBack={() => setStep(2)} onNext={() => { setAiQuip(null); setStep(4); }} disabled={!player} />
               </GlassCard>
             )}
 

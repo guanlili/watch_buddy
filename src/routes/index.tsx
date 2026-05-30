@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { NeonButton } from "@/components/NeonButton";
 import { GlassCard } from "@/components/GlassCard";
 import { useEffect, useState } from "react";
+import { useAppStore } from "@/lib/mock/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,8 +19,23 @@ const INTRO = "兄弟姐妹！您可算来了！我是你的赛博陪聊，比�
 
 function WelcomePage() {
   const nav = useNavigate();
+  const profile = useAppStore((s) => s.profile);
   const [typed, setTyped] = useState("");
+  const [isChecking, setIsChecking] = useState(true);
+
   useEffect(() => {
+    // 检查是否已经有档案
+    if (profile) {
+      // 如果有档案，直接跳转到赛前阵地
+      nav({ to: "/pre-match" });
+    } else {
+      setIsChecking(false);
+    }
+  }, [profile, nav]);
+
+  useEffect(() => {
+    if (isChecking) return;
+    
     let i = 0;
     const t = setInterval(() => {
       i++;
@@ -27,7 +43,18 @@ function WelcomePage() {
       if (i >= INTRO.length) clearInterval(t);
     }, 40);
     return () => clearInterval(t);
-  }, []);
+  }, [isChecking]);
+
+  if (isChecking) {
+    return (
+      <main className="relative min-h-screen overflow-hidden flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl animate-spin">⌨️</div>
+          <p className="mt-4 text-muted-foreground">正在加载…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -48,7 +75,7 @@ function WelcomePage() {
           className="mb-8 text-center"
         >
           <div className="font-display text-xs uppercase tracking-[0.4em] text-accent">
-            E S P O R T S · A I · B U D D Y
+            E SPORTS · AI · BUDDY
           </div>
           <h1 className="title-stroke mt-3 text-5xl sm:text-6xl">毒奶观察室</h1>
         </motion.div>

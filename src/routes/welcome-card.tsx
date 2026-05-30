@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/mock/store";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { speakTTS } from "@/lib/mock/emotion-map";
+import { TOURNAMENTS } from "@/lib/mock/types";
 import { Sparkles, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/welcome-card")({
@@ -17,9 +18,40 @@ function WelcomeCard() {
   const nav = useNavigate();
   const [typed, setTyped] = useState("");
 
-  const team = profile?.favoriteTeams[0] ?? "TES";
-  const player = profile?.favoritePlayers[0];
-  const greeting = `行家啊！选了 ${team}${player ? `，本命是 ${player}` : ""}。${player ? `下次 ${player} 开赛我第一个冲！` : "下次主队比赛我第一时间叫你！"}先给你推一条赛前提醒，准备好瓜子。`;
+  // 获取显示名称
+  const getDisplayName = () => {
+    if (!profile) return { tournament: "", team: "", player: "" };
+    
+    let tournamentName = profile.customTournament || "";
+    let teamName = profile.customTeam || "";
+    let playerName = profile.customPlayer || "";
+    
+    if (profile.tournament !== "custom") {
+      const tournament = TOURNAMENTS.find(t => t.id === profile.tournament);
+      if (tournament) {
+        tournamentName = tournament.name;
+        
+        if (profile.team !== "custom") {
+          const team = tournament.teams.find(t => t.id === profile.team);
+          if (team) {
+            teamName = team.name;
+            
+            if (profile.player !== "custom") {
+              const player = team.players.find(p => p.id === profile.player);
+              if (player) {
+                playerName = player.name;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return { tournament: tournamentName, team: teamName, player: playerName };
+  };
+
+  const { tournament, team, player } = getDisplayName();
+  const greeting = `行家啊！选了 ${tournament}${team ? `，支持 ${team}` : ""}${player ? `，本命是 ${player}` : ""}。${player ? `下次 ${player} 开赛我第一个冲！` : "下次主队比赛我第一时间叫你！"}先给你推一条赛前提醒，准备好瓜子。`;
 
   useEffect(() => {
     if (!profile) {
@@ -34,7 +66,6 @@ function WelcomeCard() {
     }, 35);
     setTimeout(() => speakTTS(greeting), 200);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!profile) return null;
@@ -69,19 +100,30 @@ function WelcomeCard() {
               </h1>
 
               <div className="relative mt-6 flex flex-wrap items-center gap-3">
-                <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
-                  <Trophy className="h-5 w-5 text-accent" />
-                  <div>
-                    <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">主队</div>
-                    <div className="font-display text-sm">{profile.favoriteTeams.join(" · ")}</div>
+                {tournament && (
+                  <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
+                    <span className="text-2xl">🏆</span>
+                    <div>
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">赛事</div>
+                      <div className="font-display text-sm">{tournament}</div>
+                    </div>
                   </div>
-                </div>
+                )}
+                {team && (
+                  <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
+                    <Trophy className="h-5 w-5 text-accent" />
+                    <div>
+                      <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">主队</div>
+                      <div className="font-display text-sm">{team}</div>
+                    </div>
+                  </div>
+                )}
                 {player && (
                   <div className="glass-strong flex items-center gap-2 rounded-2xl px-4 py-2">
                     <span className="text-2xl">🎯</span>
                     <div>
                       <div className="text-[10px] font-display uppercase tracking-wider text-muted-foreground">本命选手</div>
-                      <div className="font-display text-sm">{profile.favoritePlayers.join(" · ")}</div>
+                      <div className="font-display text-sm">{player}</div>
                     </div>
                   </div>
                 )}
@@ -109,11 +151,11 @@ function WelcomeCard() {
 
           {/* Demo push preview */}
           <div className="mt-6">
-            <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">📬 一条示例赛前推送</div>
+            <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">📬 一条示例赛前提醒</div>
             <GlassCard glow="primary">
               <div className="text-xs uppercase tracking-widest text-accent">毒奶观察室</div>
               <div className="mt-1 font-display text-lg">
-                泉水指挥官：{profile.favoriteTeams[0]} vs JDG {profile.pushTiming} 分钟后开团！
+                泉水指挥官：{team || "你的主队"} 比赛还有 {profile.pushTiming} 分钟！
               </div>
               <p className="mt-1 text-sm text-muted-foreground">点开查看双方数据 + 我的毒奶预测</p>
             </GlassCard>
