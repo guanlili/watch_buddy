@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeCardRouteImport } from './routes/welcome-card'
 import { Route as PreMatchRouteImport } from './routes/pre-match'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MatchRouteImport } from './routes/match'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WelcomeCardRoute = WelcomeCardRouteImport.update({
@@ -29,6 +30,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MatchRoute = MatchRouteImport.update({
+  id: '/match',
+  path: '/match',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
   '/onboarding': typeof OnboardingRoute
   '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
   '/onboarding': typeof OnboardingRoute
   '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
@@ -50,20 +58,28 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/match': typeof MatchRoute
   '/onboarding': typeof OnboardingRoute
   '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/onboarding' | '/pre-match' | '/welcome-card'
+  fullPaths: '/' | '/match' | '/onboarding' | '/pre-match' | '/welcome-card'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/onboarding' | '/pre-match' | '/welcome-card'
-  id: '__root__' | '/' | '/onboarding' | '/pre-match' | '/welcome-card'
+  to: '/' | '/match' | '/onboarding' | '/pre-match' | '/welcome-card'
+  id:
+    | '__root__'
+    | '/'
+    | '/match'
+    | '/onboarding'
+    | '/pre-match'
+    | '/welcome-card'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MatchRoute: typeof MatchRoute
   OnboardingRoute: typeof OnboardingRoute
   PreMatchRoute: typeof PreMatchRoute
   WelcomeCardRoute: typeof WelcomeCardRoute
@@ -92,6 +108,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/match': {
+      id: '/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof MatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +127,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MatchRoute: MatchRoute,
   OnboardingRoute: OnboardingRoute,
   PreMatchRoute: PreMatchRoute,
   WelcomeCardRoute: WelcomeCardRoute,
