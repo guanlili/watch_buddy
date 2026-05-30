@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeCardRouteImport } from './routes/welcome-card'
+import { Route as PreMatchRouteImport } from './routes/pre-match'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WelcomeCardRoute = WelcomeCardRouteImport.update({
   id: '/welcome-card',
   path: '/welcome-card',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreMatchRoute = PreMatchRouteImport.update({
+  id: '/pre-match',
+  path: '/pre-match',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/pre-match': typeof PreMatchRoute
   '/welcome-card': typeof WelcomeCardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/onboarding' | '/welcome-card'
+  fullPaths: '/' | '/onboarding' | '/pre-match' | '/welcome-card'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/onboarding' | '/welcome-card'
-  id: '__root__' | '/' | '/onboarding' | '/welcome-card'
+  to: '/' | '/onboarding' | '/pre-match' | '/welcome-card'
+  id: '__root__' | '/' | '/onboarding' | '/pre-match' | '/welcome-card'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OnboardingRoute: typeof OnboardingRoute
+  PreMatchRoute: typeof PreMatchRoute
   WelcomeCardRoute: typeof WelcomeCardRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/welcome-card'
       fullPath: '/welcome-card'
       preLoaderRoute: typeof WelcomeCardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-match': {
+      id: '/pre-match'
+      path: '/pre-match'
+      fullPath: '/pre-match'
+      preLoaderRoute: typeof PreMatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OnboardingRoute: OnboardingRoute,
+  PreMatchRoute: PreMatchRoute,
   WelcomeCardRoute: WelcomeCardRoute,
 }
 export const routeTree = rootRouteImport
