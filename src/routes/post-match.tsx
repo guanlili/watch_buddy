@@ -9,6 +9,10 @@ import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
 import { generatePoster } from "@/lib/api/image.functions";
 import { chatCompletion } from "@/lib/api/chat.functions";
+import { Input } from "@/components/Input";
+import { Textarea } from "@/components/Textarea";
+import { Chip } from "@/components/Chip";
+import { LoadingOverlay, ErrorState } from "@/components/StatusOverlay";
 import { buildPosterPrompt, type PosterContext, type PosterVariant } from "@/lib/prompts/poster";
 import {
   buildPostMatchCopyPrompt,
@@ -348,27 +352,21 @@ function PostMatch() {
                 <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
                   选手
                 </label>
-                <input
+                <Input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
                   placeholder="海报 C 位的选手 ID"
-                  className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
                 />
                 {teammatePlayers.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {teammatePlayers.map((name) => (
-                      <button
+                      <Chip
                         key={name}
-                        type="button"
+                        selected={playerName === name}
                         onClick={() => setPlayerName(name)}
-                        className={`rounded-full border px-2 py-0.5 text-[11px] transition ${
-                          playerName === name
-                            ? "border-accent bg-accent/20 text-accent"
-                            : "border-border bg-white/5 hover:border-accent/70"
-                        }`}
                       >
                         {name}
-                      </button>
+                      </Chip>
                     ))}
                   </div>
                 )}
@@ -377,11 +375,10 @@ function PostMatch() {
                 <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
                   游戏角色
                 </label>
-                <input
+                <Input
                   value={gameCharacter}
                   onChange={(e) => setGameCharacter(e.target.value)}
                   placeholder={characterPlaceholder}
-                  className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
                 />
                 <div className="mt-1 text-[10px] text-muted-foreground">
                   会画出该角色的外观、武器、技能特效。
@@ -391,12 +388,11 @@ function PostMatch() {
                 <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
                   你想说的话 <span className="text-muted-foreground/60">(海报底部标语)</span>
                 </label>
-                <textarea
+                <Textarea
                   value={userExpression}
                   onChange={(e) => setUserExpression(e.target.value)}
                   placeholder="留空就用搭子的金句"
                   rows={2}
-                  className="w-full resize-none rounded-lg bg-white/5 px-3 py-2 text-sm outline-none ring-1 ring-border focus:ring-accent"
                   maxLength={64}
                 />
                 <div className="mt-1 text-right text-[10px] text-muted-foreground">
@@ -430,44 +426,18 @@ function PostMatch() {
                     userQuote={userQuotes[i % Math.max(1, userQuotes.length)] ?? "稳了"}
                     generatedUrl={cache.url}
                   />
-                  {cache.loading && (
-                    <div className="absolute inset-0 grid place-items-center bg-black/60 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2 text-accent">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                        <div className="font-display text-xs uppercase tracking-widest">
-                          AI 出片中…
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {cache.loading && <LoadingOverlay message="AI 出片中…" />}
                   {!cache.url && !cache.loading && !cache.error && (
                     <div className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                       预览
                     </div>
                   )}
                   {!cache.loading && cache.error && (
-                    <div className="absolute inset-x-2 bottom-2 rounded-lg bg-destructive/80 px-2 py-1.5 text-center text-[10px]">
-                      <div>生成失败</div>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void generateForVariant(i);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            void generateForVariant(i);
-                          }
-                        }}
-                        className="mt-1 inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 hover:bg-white/30"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        重试
-                      </span>
-                    </div>
+                    <ErrorState
+                      variant="absolute"
+                      message="生成失败"
+                      onRetry={() => void generateForVariant(i)}
+                    />
                   )}
                 </button>
               );
@@ -527,20 +497,13 @@ function PostMatch() {
               ))}
             </div>
           </div>
-          <div className="relative rounded-xl bg-black/30">
+          <div className="relative overflow-hidden rounded-xl bg-black/30">
             <pre className="whitespace-pre-wrap p-4 font-sans text-sm leading-relaxed">
               {copyText}
             </pre>
-            {cachedCopy.loading && (
-              <div className="absolute inset-0 grid place-items-center rounded-xl bg-black/60 backdrop-blur-sm">
-                <div className="flex items-center gap-2 text-accent">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="font-display text-xs uppercase tracking-widest">AI 落笔中…</span>
-                </div>
-              </div>
-            )}
+            {cachedCopy.loading && <LoadingOverlay message="AI 落笔中…" />}
             {!cachedCopy.loading && cachedCopy.error && (
-              <div className="absolute right-2 top-2 rounded-lg bg-destructive/70 px-2 py-1 text-[10px]">
+              <div className="absolute right-2 top-2 rounded-lg bg-destructive/70 px-2 py-1 text-[10px] text-destructive-foreground">
                 生成失败，已显示兜底
               </div>
             )}

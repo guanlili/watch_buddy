@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RotateCcw, Save, Play, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, Play, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,12 @@ import {
 } from "@/lib/prompts/registry";
 import { chatCompletion } from "@/lib/api/chat.functions";
 import { generatePoster } from "@/lib/api/image.functions";
+import { GlassCard } from "@/components/GlassCard";
+import { NeonButton } from "@/components/NeonButton";
+import { Input } from "@/components/Input";
+import { Textarea } from "@/components/Textarea";
+import { LoadingOverlay } from "@/components/StatusOverlay";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "毒奶观察室 · Prompt Admin" }] }),
@@ -58,7 +64,6 @@ const SAMPLE_VARS: Partial<Record<PromptId, Record<string, string | number>>> = 
     commonInfo: "主队：EDG，对手：FPX，比分：13 : 7，结果：胜利 VICTORY",
   },
   // frame 的"组合预览"用：三个 fragment 槽位预填默认（朋友圈 + 死忠粉 + 朋友圈要求）
-  // 这样 admin 在 frame 上点试运行也能看到完整拼装后的 prompt。
   "post-match-copy.frame": {
     team_name: "TES",
     fan_type: "死忠粉型",
@@ -83,24 +88,20 @@ const SAMPLE_VARS: Partial<Record<PromptId, Record<string, string | number>>> = 
 
 function AdminPage() {
   const [selectedId, setSelectedId] = useState<PromptId>("buddy.persona");
-  // 当前编辑器内的文本（可能未保存）
   const [draft, setDraft] = useState<string>(() => getPromptTemplate("buddy.persona"));
-  // 触发版本号，用来让 sidebar / 编辑器在 save/reset 后重新读 storage
+  // version 是 save / reset 后的刷新触发器：strict 一点的 React 不会自动重读 localStorage。
   const [version, setVersion] = useState(0);
 
   const meta = PROMPT_META[selectedId];
-  // 直接每渲染读一次 localStorage —— 极轻量。version 是 save/reset 后的刷新触发器。
   void version;
   const stored = getPromptTemplate(selectedId);
   const isDefault = !isOverridden(selectedId);
   const dirty = draft !== stored;
 
-  // 切换选中 prompt 时，把 draft 重置为该 prompt 当前生效值。
   useEffect(() => {
     setDraft(getPromptTemplate(selectedId));
   }, [selectedId, version]);
 
-  // 变量表单 state（每个 prompt 单独一份示例值）
   const [vars, setVars] = useState<Record<string, string>>({});
   useEffect(() => {
     const sample = SAMPLE_VARS[selectedId] ?? {};
@@ -111,7 +112,6 @@ function AdminPage() {
     setVars(next);
   }, [selectedId, meta.knownVars]);
 
-  // 试运行
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<{ kind: "text" | "image"; value: string } | null>(null);
 
@@ -145,7 +145,6 @@ function AdminPage() {
 
   function handleSave() {
     if (draft === PROMPT_DEFAULTS[selectedId]) {
-      // 跟默认一样就别落 storage，留干净
       resetPromptOverride(selectedId);
       toast.success("已保存（与默认一致，未写入 override）");
     } else {
@@ -167,7 +166,6 @@ function AdminPage() {
     navigator.clipboard.writeText(filled).then(() => toast.success("已复制完整 prompt"));
   }
 
-  // 按 group 分组渲染侧边栏
   const groups = useMemo(() => {
     const map = new Map<string, PromptId[]>();
     for (const id of ALL_IDS) {
@@ -181,24 +179,31 @@ function AdminPage() {
   return (
     <main className="min-h-screen px-4 py-6">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex items-baseline justify-between">
-          <h1 className="font-display text-2xl">
-            Prompt Admin
-            <span className="ml-3 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+        {/* Header */}
+        <header className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <div className="font-display text-[10px] uppercase tracking-[0.3em] text-accent">
+              PROMPT · ADMIN
+            </div>
+            <h1 className="mt-1 font-display text-2xl glow-text-accent sm:text-3xl">
+              提示词调试台
+            </h1>
+            <div className="mt-1 font-mono text-[11px] text-muted-foreground">
               localStorage override · 仅本浏览器生效
-            </span>
-          </h1>
+            </div>
+          </div>
           <a
             href="/"
-            className="text-xs font-display uppercase tracking-wider text-muted-foreground hover:text-accent"
+            className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider text-muted-foreground hover:text-accent"
           >
-            ← 回主站
+            <ArrowLeft className="h-3.5 w-3.5" />
+            回主站
           </a>
         </header>
 
-        <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
           {/* Sidebar */}
-          <aside className="rounded-2xl border border-border bg-white/[0.02] p-3">
+          <GlassCard className="!p-3 lg:sticky lg:top-4 lg:h-fit">
             <div className="space-y-4">
               {groups.map(([group, ids]) => (
                 <div key={group}>
@@ -214,11 +219,12 @@ function AdminPage() {
                           key={id}
                           type="button"
                           onClick={() => setSelectedId(id)}
-                          className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition ${
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition",
                             active
-                              ? "bg-accent/30 text-accent"
-                              : "text-foreground/80 hover:bg-white/5"
-                          }`}
+                              ? "bg-accent/25 text-accent neon-border-accent"
+                              : "text-foreground/80 hover:bg-white/5",
+                          )}
                         >
                           <span className="truncate">{PROMPT_META[id].label}</span>
                           {overridden && (
@@ -233,17 +239,17 @@ function AdminPage() {
                 </div>
               ))}
             </div>
-            {/* hidden version probe to force re-render when localStorage changes */}
             <span className="hidden" data-version={version} />
-          </aside>
+          </GlassCard>
 
-          {/* Editor */}
+          {/* Editor + Run */}
           <section className="space-y-4">
-            <div className="rounded-2xl border border-border bg-white/[0.02] p-4">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <div className="font-display text-sm">{meta.label}</div>
-                  <div className="font-mono text-[11px] text-muted-foreground">
+            {/* Editor */}
+            <GlassCard glow="accent">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-display text-base">{meta.label}</div>
+                  <div className="mt-0.5 break-all font-mono text-[11px] text-muted-foreground">
                     id: {meta.id} · 运行端: {meta.runVia === "image" ? "Seedream 生图" : "聊天 LLM"}
                   </div>
                 </div>
@@ -261,131 +267,129 @@ function AdminPage() {
                 </div>
               </div>
 
-              <textarea
+              <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 spellCheck={false}
                 rows={Math.min(28, Math.max(10, draft.split("\n").length + 1))}
-                className="w-full resize-y rounded-lg border border-border bg-black/30 p-3 font-mono text-xs leading-relaxed outline-none focus:border-accent"
+                className="resize-y bg-black/30 font-mono text-xs leading-relaxed"
               />
 
               {meta.knownVars.length > 0 && (
                 <div className="mt-3">
-                  <div className="mb-1 text-[10px] font-display uppercase tracking-widest text-muted-foreground">
-                    可用变量 (substitute 会替换 {`{{name}}`})
+                  <div className="mb-1.5 text-[10px] font-display uppercase tracking-widest text-muted-foreground">
+                    可用变量（substitute 会替换 {`{{name}}`} 或 {`{name}`}）
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {meta.knownVars.map((v) => (
                       <code
                         key={v}
-                        className="rounded bg-white/5 px-2 py-0.5 text-[11px] text-accent"
+                        className="rounded bg-accent/15 px-2 py-0.5 text-[11px] text-accent"
                       >
-                        {`{{${v}}}`}
+                        {`{${v}}`}
                       </code>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!dirty}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-display uppercase tracking-wider text-accent-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Save className="h-3.5 w-3.5" />
+              <div className="mt-4 flex flex-wrap gap-2">
+                <NeonButton variant="accent" size="sm" onClick={handleSave} disabled={!dirty}>
+                  <Save className="mr-1 inline h-3.5 w-3.5" />
                   保存
-                </button>
-                <button
-                  type="button"
+                </NeonButton>
+                <NeonButton
+                  variant="ghost"
+                  size="sm"
                   onClick={handleReset}
                   disabled={isDefault && !dirty}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white/5 px-3 py-1.5 text-xs font-display uppercase tracking-wider transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  重置为默认
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyAssembled}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white/5 px-3 py-1.5 text-xs font-display uppercase tracking-wider transition hover:bg-white/10"
-                >
-                  <Copy className="h-3.5 w-3.5" />
+                  <RotateCcw className="mr-1 inline h-3.5 w-3.5" />
+                  重置默认
+                </NeonButton>
+                <NeonButton variant="ghost" size="sm" onClick={handleCopyAssembled}>
+                  <Copy className="mr-1 inline h-3.5 w-3.5" />
                   复制完整 prompt
-                </button>
+                </NeonButton>
               </div>
-            </div>
+            </GlassCard>
 
-            {/* Vars + Run */}
-            <div className="rounded-2xl border border-border bg-white/[0.02] p-4">
-              <div className="mb-3 font-display text-sm">试运行</div>
+            {/* Run */}
+            <GlassCard glow="primary">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="font-display text-base">试运行</div>
+                {meta.runVia === "image" && (
+                  <div className="rounded bg-primary/20 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-primary">
+                    会生成真图 · 计费
+                  </div>
+                )}
+              </div>
+
               {meta.knownVars.length === 0 ? (
                 <div className="mb-3 text-xs text-muted-foreground">
-                  该 prompt 没有变量，直接试运行。
+                  该 prompt 没有变量，直接试运行即可。
                 </div>
               ) : (
                 <div className="mb-3 grid gap-2 sm:grid-cols-2">
                   {meta.knownVars.map((k) => (
                     <label key={k} className="flex flex-col gap-1">
                       <span className="font-mono text-[11px] text-muted-foreground">{k}</span>
-                      <input
+                      <Input
                         value={vars[k] ?? ""}
                         onChange={(e) => setVars((cur) => ({ ...cur, [k]: e.target.value }))}
-                        className="rounded-lg bg-white/5 px-2.5 py-1.5 text-sm outline-none ring-1 ring-border focus:ring-accent"
                       />
                     </label>
                   ))}
                 </div>
               )}
-              <button
-                type="button"
-                onClick={handleRun}
-                disabled={running}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-display uppercase tracking-wider text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
+
+              <NeonButton variant="primary" size="sm" onClick={handleRun} disabled={running}>
                 {running ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />
                     运行中
                   </>
                 ) : (
                   <>
-                    <Play className="h-3.5 w-3.5" />
+                    <Play className="mr-1 inline h-3.5 w-3.5" />
                     用当前草稿运行
                   </>
                 )}
-              </button>
+              </NeonButton>
 
-              {output && (
-                <div className="mt-4">
+              {(running || output) && (
+                <div className="relative mt-4">
                   <div className="mb-2 text-[10px] font-display uppercase tracking-widest text-muted-foreground">
                     输出
                   </div>
-                  {output.kind === "text" ? (
-                    <pre className="whitespace-pre-wrap rounded-lg bg-black/40 p-3 text-sm leading-relaxed">
-                      {output.value}
-                    </pre>
-                  ) : (
-                    <div className="rounded-lg bg-black/40 p-3">
-                      <img
-                        src={output.value}
-                        alt="generated"
-                        className="max-h-[600px] w-auto rounded"
-                      />
-                      <a
-                        href={output.value}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-block text-[11px] text-accent underline"
-                      >
-                        在新标签打开原图
-                      </a>
-                    </div>
-                  )}
+                  <div className="relative min-h-[120px] overflow-hidden rounded-lg bg-black/40 p-3">
+                    {output?.kind === "text" && (
+                      <pre className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {output.value}
+                      </pre>
+                    )}
+                    {output?.kind === "image" && (
+                      <div className="space-y-2">
+                        <img
+                          src={output.value}
+                          alt="generated"
+                          className="max-h-[600px] w-auto rounded"
+                        />
+                        <a
+                          href={output.value}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block text-[11px] text-accent underline"
+                        >
+                          在新标签打开原图
+                        </a>
+                      </div>
+                    )}
+                    {running && <LoadingOverlay message="呼叫模型中…" />}
+                  </div>
                 </div>
               )}
-            </div>
+            </GlassCard>
           </section>
         </div>
       </div>

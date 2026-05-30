@@ -3,7 +3,7 @@ import type { MatchEvent } from "./types";
 // TES (我方) vs JDG (对面). Accelerated: 1 real second = 6 in-match minutes.
 // Total ~45 in-match minutes. So whole match ~75 real seconds. But we'll slow to 1s = 3min so ~90s.
 export const MATCH_DURATION_MINUTES = 45;
-export const SECONDS_PER_REAL_SECOND = 3; // 3 in-match minutes per real second → ~15s match
+export const SECONDS_PER_REAL_SECOND = 1; // 1 in-match minutes per real second → ~15s match
 
 export const TIMELINE: MatchEvent[] = [
   {

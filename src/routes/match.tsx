@@ -16,6 +16,8 @@ import { TOURNAMENTS } from "@/lib/mock/types";
 import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
 import { buildLiveMatchSystemPrompt } from "@/lib/prompts/buddy";
 import { MicButton } from "@/components/MicButton";
+import { Input } from "@/components/Input";
+import { Chip } from "@/components/Chip";
 import { EffectOverlay } from "@/components/EffectOverlay";
 import { GlassCard } from "@/components/GlassCard";
 import { MatchStageRail } from "@/components/MatchStageRail";
@@ -564,16 +566,15 @@ function Match() {
               提示选择
             </div>
             {promptChoices.map((choice) => (
-              <button
+              <Chip
                 key={choice}
-                type="button"
                 onClick={() => send(choice)}
                 disabled={replying}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-white/5 px-3 py-1.5 text-xs text-foreground transition hover:border-accent/70 hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50"
+                className="max-w-full px-3 py-1.5"
               >
                 <MessageCircle className="h-3.5 w-3.5 shrink-0 text-primary" />
                 <span className="truncate">{choice}</span>
-              </button>
+              </Chip>
             ))}
           </div>
           <div className="flex items-center gap-2">
@@ -592,7 +593,7 @@ function Match() {
             </button>
             {inputMode === "text" ? (
               <>
-                <input
+                <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
@@ -604,7 +605,7 @@ function Match() {
                         : "和搭子聊点啥… 试试 '稳' / '崩' / '菜'"
                   }
                   disabled={replying}
-                  className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent disabled:opacity-60"
+                  className="flex-1 rounded-xl px-4 py-3 text-base"
                 />
                 <NeonButton
                   variant="accent"

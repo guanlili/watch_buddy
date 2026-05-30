@@ -4,9 +4,11 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
@@ -21,7 +23,10 @@ function NotFoundComponent() {
         <h1 className="title-stroke text-7xl">404</h1>
         <h2 className="mt-4 font-display text-xl">这页比赛取消了</h2>
         <p className="mt-2 text-sm text-muted-foreground">不在咱们直播列表里，回大厅再选一场吧。</p>
-        <Link to="/" className="mt-6 inline-block rounded-xl bg-primary px-6 py-3 font-display text-sm uppercase tracking-wider neon-border-primary">
+        <Link
+          to="/"
+          className="mt-6 inline-block rounded-xl bg-primary px-6 py-3 font-display text-sm uppercase tracking-wider neon-border-primary"
+        >
           回大厅
         </Link>
       </div>
@@ -43,12 +48,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">服务器掉线，重试一下。</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="rounded-xl bg-primary px-5 py-2.5 font-display text-sm uppercase tracking-wider neon-border-primary"
           >
             再试
           </button>
-          <a href="/" className="rounded-xl border border-border px-5 py-2.5 font-display text-sm uppercase tracking-wider">
+          <a
+            href="/"
+            className="rounded-xl border border-border px-5 py-2.5 font-display text-sm uppercase tracking-wider"
+          >
             回大厅
           </a>
         </div>
@@ -66,13 +77,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
       { name: "author", content: "毒奶观察室" },
       { property: "og:title", content: "毒奶观察室 · AI 电竞赛事搭子" },
-      { property: "og:description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
+      {
+        property: "og:description",
+        content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "毒奶观察室 · AI 电竞赛事搭子" },
-      { name: "twitter:description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png" },
+      {
+        name: "twitter:description",
+        content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -109,8 +134,26 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ParticleBackground />
-      <Outlet />
+      <AnimatedOutlet />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
+  );
+}
+
+// 路由级页面过渡：用 pathname 做 key，路由换时上一页 fade-out、下一页 fade-in。
+function AnimatedOutlet() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
+        <Outlet />
+      </motion.div>
+    </AnimatePresence>
   );
 }

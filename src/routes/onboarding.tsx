@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
+import { Input } from "@/components/Input";
 import { useAppStore } from "@/lib/mock/store";
 import type { FanType, PushChannel } from "@/lib/mock/types";
 import { TOURNAMENTS } from "@/lib/mock/types";
@@ -27,31 +28,40 @@ const FAN_TYPES: { value: FanType; label: string; desc: string }[] = [
 function Onboarding() {
   const nav = useNavigate();
   const setProfile = useAppStore((s) => s.setProfile);
+  // 老用户带档案进来时直接跳走，别让他们再填一遍。
+  // 空 deps：避免 finish() 调 setProfile 后又把刚填完的新用户跳到 /chat
+  // （新用户应该走 /welcome-card）。
+  useEffect(() => {
+    if (useAppStore.getState().profile) {
+      nav({ to: "/chat", replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [step, setStep] = useState(0); // 0: login, 1: tournament, 2: team, 3: player, 4: preferences
-  
+
   // 状态
   const [tournament, setTournament] = useState<string>("");
   const [customTournament, setCustomTournament] = useState<string>("");
   const [showCustomTournament, setShowCustomTournament] = useState(false);
-  
+
   const [team, setTeam] = useState<string>("");
   const [customTeam, setCustomTeam] = useState<string>("");
   const [showCustomTeam, setShowCustomTeam] = useState(false);
-  
+
   const [player, setPlayer] = useState<string>("");
   const [customPlayer, setCustomPlayer] = useState<string>("");
   const [showCustomPlayer, setShowCustomPlayer] = useState(false);
-  
+
   const [channels, setChannels] = useState<PushChannel[]>(["app"]);
   const [timing, setTiming] = useState(30);
   const [fanType, setFanType] = useState<FanType>("diehard");
   const [aiQuip, setAiQuip] = useState<string | null>(null);
 
   // 获取当前选中的赛事数据
-  const selectedTournament = TOURNAMENTS.find(t => t.id === tournament);
-  
+  const selectedTournament = TOURNAMENTS.find((t) => t.id === tournament);
+
   // 获取当前选中的主队数据
-  const selectedTeam = selectedTournament?.teams.find(t => t.id === team);
+  const selectedTeam = selectedTournament?.teams.find((t) => t.id === team);
 
   const toggleChannel = (c: PushChannel) => {
     setChannels((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -61,19 +71,23 @@ function Onboarding() {
     setTournament(id);
     setTeam(""); // 重置主队
     setPlayer(""); // 重置选手
-    setAiQuip(TOURNAMENTS.find(t => t.id === id) ? `${TOURNAMENTS.find(t => t.id === id)?.name}？行家啊，接下来选个主队吧。` : null);
+    setAiQuip(
+      TOURNAMENTS.find((t) => t.id === id)
+        ? `${TOURNAMENTS.find((t) => t.id === id)?.name}？行家啊，接下来选个主队吧。`
+        : null,
+    );
   };
 
   const selectTeam = (id: string) => {
     setTeam(id);
     setPlayer(""); // 重置选手
-    const teamName = selectedTournament?.teams.find(t => t.id === id)?.name;
+    const teamName = selectedTournament?.teams.find((t) => t.id === id)?.name;
     setAiQuip(teamName ? `${teamName}？有眼光！选个本命选手吧。` : null);
   };
 
   const selectPlayer = (id: string) => {
     setPlayer(id);
-    const playerName = selectedTeam?.players.find(p => p.id === id)?.name;
+    const playerName = selectedTeam?.players.find((p) => p.id === id)?.name;
     setAiQuip(playerName ? `${playerName}！我也超喜欢他，准备好一起看比赛了吗？` : null);
   };
 
@@ -104,7 +118,11 @@ function Onboarding() {
             <div
               key={t}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-display text-[10px] uppercase tracking-wider ${
-                i === step ? "neon-border-accent bg-accent/20 text-accent" : i < step ? "border border-primary/50 bg-primary/20 text-foreground" : "border border-border text-muted-foreground"
+                i === step
+                  ? "neon-border-accent bg-accent/20 text-accent"
+                  : i < step
+                    ? "border border-primary/50 bg-primary/20 text-foreground"
+                    : "border border-border text-muted-foreground"
               }`}
             >
               {i < step && <Check className="h-3 w-3" />}
@@ -138,7 +156,9 @@ function Onboarding() {
                     >
                       <span className="flex items-center gap-3">
                         <span className="text-2xl">{opt.emoji}</span>
-                        <span className="font-display text-sm uppercase tracking-wider">{opt.label}</span>
+                        <span className="font-display text-sm uppercase tracking-wider">
+                          {opt.label}
+                        </span>
                       </span>
                       <ChevronRight className="h-5 w-5 text-accent" />
                     </button>
@@ -151,7 +171,7 @@ function Onboarding() {
               <GlassCard glow="primary">
                 <h2 className="font-display text-2xl glow-text-primary">关注哪个赛事？</h2>
                 <p className="mt-1 text-sm text-muted-foreground">选择你喜欢的赛事，或者自己添加</p>
-                
+
                 {!showCustomTournament ? (
                   <>
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -162,7 +182,9 @@ function Onboarding() {
                             key={t.id}
                             onClick={() => selectTournament(t.id)}
                             className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
-                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                              on
+                                ? "neon-border-primary bg-primary/40"
+                                : "border border-border bg-white/5 hover:bg-white/10"
                             }`}
                           >
                             {t.name}
@@ -179,15 +201,31 @@ function Onboarding() {
                   </>
                 ) : (
                   <div className="mt-5">
-                    <input
+                    <Input
                       value={customTournament}
                       onChange={(e) => setCustomTournament(e.target.value)}
                       placeholder="输入赛事名称"
-                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                      className="rounded-xl px-4 py-3 text-base"
                     />
                     <div className="mt-3 flex gap-2">
-                      <NeonButton variant="ghost" onClick={() => { setShowCustomTournament(false); setCustomTournament(""); }}>取消</NeonButton>
-                      <NeonButton variant="accent" onClick={() => { setTournament("custom"); setAiQuip(`${customTournament}？好的，接下来选个主队吧。`); }}>确定</NeonButton>
+                      <NeonButton
+                        variant="ghost"
+                        onClick={() => {
+                          setShowCustomTournament(false);
+                          setCustomTournament("");
+                        }}
+                      >
+                        取消
+                      </NeonButton>
+                      <NeonButton
+                        variant="accent"
+                        onClick={() => {
+                          setTournament("custom");
+                          setAiQuip(`${customTournament}？好的，接下来选个主队吧。`);
+                        }}
+                      >
+                        确定
+                      </NeonButton>
                     </div>
                   </div>
                 )}
@@ -202,8 +240,15 @@ function Onboarding() {
                     🐶 {aiQuip}
                   </motion.div>
                 )}
-                
-                <StepNav onBack={() => setStep(0)} onNext={() => { setAiQuip(null); setStep(2); }} disabled={!tournament} />
+
+                <StepNav
+                  onBack={() => setStep(0)}
+                  onNext={() => {
+                    setAiQuip(null);
+                    setStep(2);
+                  }}
+                  disabled={!tournament}
+                />
               </GlassCard>
             )}
 
@@ -211,7 +256,7 @@ function Onboarding() {
               <GlassCard glow="primary">
                 <h2 className="font-display text-2xl glow-text-primary">支持哪个队伍？</h2>
                 <p className="mt-1 text-sm text-muted-foreground">选择你的主队，或者自己添加</p>
-                
+
                 {!showCustomTeam ? (
                   <>
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -222,7 +267,9 @@ function Onboarding() {
                             key={t.id}
                             onClick={() => selectTeam(t.id)}
                             className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
-                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                              on
+                                ? "neon-border-primary bg-primary/40"
+                                : "border border-border bg-white/5 hover:bg-white/10"
                             }`}
                           >
                             {t.name}
@@ -239,15 +286,31 @@ function Onboarding() {
                   </>
                 ) : (
                   <div className="mt-5">
-                    <input
+                    <Input
                       value={customTeam}
                       onChange={(e) => setCustomTeam(e.target.value)}
                       placeholder="输入主队名称"
-                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                      className="rounded-xl px-4 py-3 text-base"
                     />
                     <div className="mt-3 flex gap-2">
-                      <NeonButton variant="ghost" onClick={() => { setShowCustomTeam(false); setCustomTeam(""); }}>取消</NeonButton>
-                      <NeonButton variant="accent" onClick={() => { setTeam("custom"); setAiQuip(`${customTeam}？有眼光！选个本命选手吧。`); }}>确定</NeonButton>
+                      <NeonButton
+                        variant="ghost"
+                        onClick={() => {
+                          setShowCustomTeam(false);
+                          setCustomTeam("");
+                        }}
+                      >
+                        取消
+                      </NeonButton>
+                      <NeonButton
+                        variant="accent"
+                        onClick={() => {
+                          setTeam("custom");
+                          setAiQuip(`${customTeam}？有眼光！选个本命选手吧。`);
+                        }}
+                      >
+                        确定
+                      </NeonButton>
                     </div>
                   </div>
                 )}
@@ -262,16 +325,25 @@ function Onboarding() {
                     🐶 {aiQuip}
                   </motion.div>
                 )}
-                
-                <StepNav onBack={() => setStep(1)} onNext={() => { setAiQuip(null); setStep(3); }} disabled={!team} />
+
+                <StepNav
+                  onBack={() => setStep(1)}
+                  onNext={() => {
+                    setAiQuip(null);
+                    setStep(3);
+                  }}
+                  disabled={!team}
+                />
               </GlassCard>
             )}
 
             {step === 3 && (
               <GlassCard glow="primary">
                 <h2 className="font-display text-2xl glow-text-primary">本命选手是谁？</h2>
-                <p className="mt-1 text-sm text-muted-foreground">选择你最喜欢的选手，或者自己添加</p>
-                
+                <p className="mt-1 text-sm text-muted-foreground">
+                  选择你最喜欢的选手，或者自己添加
+                </p>
+
                 {!showCustomPlayer ? (
                   <>
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -282,7 +354,9 @@ function Onboarding() {
                             key={p.id}
                             onClick={() => selectPlayer(p.id)}
                             className={`rounded-xl px-4 py-2 font-display text-sm uppercase tracking-wider transition ${
-                              on ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5 hover:bg-white/10"
+                              on
+                                ? "neon-border-primary bg-primary/40"
+                                : "border border-border bg-white/5 hover:bg-white/10"
                             }`}
                           >
                             {p.name}
@@ -299,15 +373,31 @@ function Onboarding() {
                   </>
                 ) : (
                   <div className="mt-5">
-                    <input
+                    <Input
                       value={customPlayer}
                       onChange={(e) => setCustomPlayer(e.target.value)}
                       placeholder="输入选手名称"
-                      className="w-full rounded-xl bg-white/5 px-4 py-3 font-sans text-base outline-none ring-1 ring-border focus:ring-accent"
+                      className="rounded-xl px-4 py-3 text-base"
                     />
                     <div className="mt-3 flex gap-2">
-                      <NeonButton variant="ghost" onClick={() => { setShowCustomPlayer(false); setCustomPlayer(""); }}>取消</NeonButton>
-                      <NeonButton variant="accent" onClick={() => { setPlayer("custom"); setAiQuip(`${customPlayer}！我也超喜欢他，准备好一起看比赛了吗？`); }}>确定</NeonButton>
+                      <NeonButton
+                        variant="ghost"
+                        onClick={() => {
+                          setShowCustomPlayer(false);
+                          setCustomPlayer("");
+                        }}
+                      >
+                        取消
+                      </NeonButton>
+                      <NeonButton
+                        variant="accent"
+                        onClick={() => {
+                          setPlayer("custom");
+                          setAiQuip(`${customPlayer}！我也超喜欢他，准备好一起看比赛了吗？`);
+                        }}
+                      >
+                        确定
+                      </NeonButton>
                     </div>
                   </div>
                 )}
@@ -322,8 +412,15 @@ function Onboarding() {
                     🐶 {aiQuip}
                   </motion.div>
                 )}
-                
-                <StepNav onBack={() => setStep(2)} onNext={() => { setAiQuip(null); setStep(4); }} disabled={!player} />
+
+                <StepNav
+                  onBack={() => setStep(2)}
+                  onNext={() => {
+                    setAiQuip(null);
+                    setStep(4);
+                  }}
+                  disabled={!player}
+                />
               </GlassCard>
             )}
 
@@ -333,7 +430,9 @@ function Onboarding() {
                 <p className="mt-1 text-sm text-muted-foreground">不会半夜叫醒你，除非你选了 LCK</p>
 
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">推送渠道</div>
+                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">
+                    推送渠道
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {CHANNELS.map(({ value, label, icon: Icon }) => {
                       const on = channels.includes(value);
@@ -342,11 +441,15 @@ function Onboarding() {
                           key={value}
                           onClick={() => toggleChannel(value)}
                           className={`flex flex-col items-center gap-1 rounded-xl px-3 py-3 transition ${
-                            on ? "neon-border-accent bg-accent/30" : "border border-border bg-white/5"
+                            on
+                              ? "neon-border-accent bg-accent/30"
+                              : "border border-border bg-white/5"
                           }`}
                         >
                           <Icon className="h-5 w-5" />
-                          <span className="font-display text-[11px] uppercase tracking-wider">{label}</span>
+                          <span className="font-display text-[11px] uppercase tracking-wider">
+                            {label}
+                          </span>
                         </button>
                       );
                     })}
@@ -354,14 +457,18 @@ function Onboarding() {
                 </div>
 
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">提前提醒</div>
+                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">
+                    提前提醒
+                  </div>
                   <div className="flex gap-2">
                     {[15, 30, 60].map((m) => (
                       <button
                         key={m}
                         onClick={() => setTiming(m)}
                         className={`flex-1 rounded-xl px-3 py-2 font-mono text-sm transition ${
-                          timing === m ? "neon-border-primary bg-primary/40" : "border border-border bg-white/5"
+                          timing === m
+                            ? "neon-border-primary bg-primary/40"
+                            : "border border-border bg-white/5"
                         }`}
                       >
                         {m} 分钟
@@ -371,17 +478,23 @@ function Onboarding() {
                 </div>
 
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">你是哪种球迷？</div>
+                  <div className="mb-2 text-xs font-display uppercase tracking-wider text-muted-foreground">
+                    你是哪种球迷？
+                  </div>
                   <div className="grid gap-2">
                     {FAN_TYPES.map((f) => (
                       <button
                         key={f.value}
                         onClick={() => setFanType(f.value)}
                         className={`rounded-xl px-4 py-3 text-left transition ${
-                          fanType === f.value ? "neon-border-primary bg-primary/30" : "border border-border bg-white/5"
+                          fanType === f.value
+                            ? "neon-border-primary bg-primary/30"
+                            : "border border-border bg-white/5"
                         }`}
                       >
-                        <div className="font-display text-sm uppercase tracking-wider">{f.label}</div>
+                        <div className="font-display text-sm uppercase tracking-wider">
+                          {f.label}
+                        </div>
                         <div className="text-xs text-muted-foreground">{f.desc}</div>
                       </button>
                     ))}
@@ -389,8 +502,12 @@ function Onboarding() {
                 </div>
 
                 <div className="mt-6 flex justify-between gap-3">
-                  <NeonButton variant="ghost" onClick={() => setStep(3)}>上一步</NeonButton>
-                  <NeonButton variant="ember" size="lg" onClick={finish}>🔥 搞定，开冲</NeonButton>
+                  <NeonButton variant="ghost" onClick={() => setStep(3)}>
+                    上一步
+                  </NeonButton>
+                  <NeonButton variant="ember" size="lg" onClick={finish}>
+                    🔥 搞定，开冲
+                  </NeonButton>
                 </div>
               </GlassCard>
             )}
@@ -401,11 +518,23 @@ function Onboarding() {
   );
 }
 
-function StepNav({ onBack, onNext, disabled }: { onBack: () => void; onNext: () => void; disabled?: boolean }) {
+function StepNav({
+  onBack,
+  onNext,
+  disabled,
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="mt-6 flex justify-between gap-3">
-      <NeonButton variant="ghost" onClick={onBack}>上一步</NeonButton>
-      <NeonButton variant="accent" onClick={onNext} disabled={disabled}>下一步</NeonButton>
+      <NeonButton variant="ghost" onClick={onBack}>
+        上一步
+      </NeonButton>
+      <NeonButton variant="accent" onClick={onNext} disabled={disabled}>
+        下一步
+      </NeonButton>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import type { RecommendedMatch, Tournament } from "@/lib/mock/types";
 import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
 import { buildBuddySystemPrompt } from "@/lib/prompts/buddy";
 import { MicButton } from "@/components/MicButton";
+import { Input } from "@/components/Input";
 import { Send, Play, Clock, Swords, ArrowLeft, Keyboard, Mic } from "lucide-react";
 
 export const Route = createFileRoute("/chat")({
@@ -203,13 +204,13 @@ function Chat() {
             </button>
             {inputMode === "text" ? (
               <>
-                <input
+                <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                   placeholder={loading ? "搭子正在码字…" : "和搭子聊点啥…"}
                   disabled={loading}
-                  className="flex-1 rounded-xl bg-white/5 px-4 py-3 text-base outline-none ring-1 ring-border focus:ring-accent disabled:opacity-60"
+                  className="flex-1 rounded-xl px-4 py-3 text-base"
                 />
                 <NeonButton
                   variant="accent"
