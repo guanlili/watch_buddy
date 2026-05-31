@@ -7,12 +7,16 @@ import {
   USER_RESPONSE_PACKS,
   FALLBACK_REPLIES,
   IDLE_OPENERS,
-  SECONDS_PER_REAL_SECOND,
-  MATCH_DURATION_MINUTES,
+  SPEED_OPTIONS,
+  DEFAULT_SPEED,
+  MATCH_DURATION_SECONDS,
+  MATCH_SECONDS_PER_REAL_SECOND_1X,
+  MATCH_HOME_TEAM,
+  MATCH_AWAY_TEAM,
+  type SpeedOption,
 } from "@/lib/mock/timeline";
 import { EMOTION_MAP, playBeep, speakTTS } from "@/lib/mock/emotion-map";
 import type { EmotionLabel, EmotionLogEntry } from "@/lib/mock/types";
-import { TOURNAMENTS } from "@/lib/mock/types";
 import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
 import { buildLiveMatchSystemPrompt } from "@/lib/prompts/buddy";
 import { MicButton } from "@/components/MicButton";
@@ -48,20 +52,20 @@ interface ChatMsg {
   text: string;
   emotion?: EmotionLabel;
   intensity?: 1 | 2 | 3 | 4 | 5;
-  minute: number;
+  seconds: number; // 比赛已进行时间（秒）
   golden?: boolean;
   flagAction?: "create" | "resolve";
   flagHit?: boolean;
 }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
-const DEFAULT_REPLAY_SPEED = SECONDS_PER_REAL_SECOND;
-const REPLAY_SPEED_OPTIONS = [
-  { label: "慢速", value: 1 },
-  { label: "标准", value: 2 },
-  { label: "演示", value: 3 },
-  { label: "快进", value: 5 },
-] as const;
+
+function formatMatchTime(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
 
 type AgentReply = {
   text: string;
@@ -74,16 +78,17 @@ function pickOne<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function getInitialReplaySpeed() {
-  if (typeof window === "undefined") return DEFAULT_REPLAY_SPEED;
+function getInitialReplaySpeed(): SpeedOption {
+  if (typeof window === "undefined") return DEFAULT_SPEED;
   const raw = Number(new URLSearchParams(window.location.search).get("speed"));
-  return REPLAY_SPEED_OPTIONS.some((option) => option.value === raw) ? raw : DEFAULT_REPLAY_SPEED;
+  const match = SPEED_OPTIONS.find((option) => option === raw);
+  return match ?? DEFAULT_SPEED;
 }
 
-function updateReplaySpeedSearch(speed: number) {
+function updateReplaySpeedSearch(speed: SpeedOption) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (speed === DEFAULT_REPLAY_SPEED) {
+  if (speed === DEFAULT_SPEED) {
     url.searchParams.delete("speed");
   } else {
     url.searchParams.set("speed", String(speed));
@@ -93,7 +98,7 @@ function updateReplaySpeedSearch(speed: number) {
 
 function buildPromptChoices(
   input: string,
-  minute: number,
+  seconds: number,
   score: { ours: number; theirs: number },
   lastEvent: string | null,
   matchEnded: boolean,
@@ -135,7 +140,7 @@ function buildPromptChoices(
   if (score.ours > score.theirs) {
     return ["优势怎么扩大？", "这把是不是稳了？", "下一波看谁发挥？"];
   }
-  if (minute >= 35) {
+  if (seconds >= 17 * 60) {
     return ["最后一波怎么打？", "谁能终结比赛？", "现在最怕什么？"];
   }
   return ["这波怎么看？", "给我预测下一波", "我有点紧张"];
@@ -144,17 +149,18 @@ function buildPromptChoices(
 // 仅用作 LLM 调用失败时的兜底文案。
 function buildUserFeedbackFallback(
   text: string,
-  minute: number,
+  seconds: number,
   score: { ours: number; theirs: number },
   lastEvent: string | null,
 ): AgentReply {
   const lower = text.toLowerCase();
+  const nextMinuteHint = Math.max(1, Math.round(seconds / 60) + 2);
   if (["赌", "预测", "flag"].some((k) => lower.includes(k))) {
     return {
       text:
         score.ours >= score.theirs
-          ? `你这个 Flag 我接了：${minute + 5} 分钟前后看一波资源团，TES 只要先手开到核心就能滚起来。`
-          : `敢赌就有节目效果。现在落后也不是死局，我押 TES 靠边线牵扯偷一波节奏回来。`,
+          ? `你这个 Flag 我接了：${nextMinuteHint} 分钟前后看一波资源团，${MATCH_HOME_TEAM} 只要先手开到核心就能滚起来。`
+          : `敢赌就有节目效果。现在落后也不是死局，我押 ${MATCH_HOME_TEAM} 靠边线牵扯偷一波节奏回来。`,
       emotion: "tension",
       intensity: 4,
       isGoldenQuote: true,
@@ -173,9 +179,9 @@ function buildUserFeedbackFallback(
         : "我们现在落后";
   const eventContext = lastEvent ? `刚才「${lastEvent}」之后，` : "";
   const minuteContext =
-    minute >= 35
+    seconds >= 17 * 60
       ? "已经到后期，每一句毒奶都可能改命。"
-      : minute >= 20
+      : seconds >= 10 * 60
         ? "中盘节奏最容易突然变天。"
         : "前期别急着下结论。";
 
@@ -215,37 +221,19 @@ function Match() {
   const nav = useNavigate();
   const profile = useAppStore((s) => s.profile);
 
-  // 获取用户选择的主队名称
-  function getTeamName(): string {
-    if (!profile) return "TES";
-
-    // 如果是自定义的队伍
-    if (profile.team === "custom" && profile.customTeam) {
-      return profile.customTeam;
-    }
-
-    // 从TOURNAMENTS中找到对应的队伍
-    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
-    if (tournament) {
-      const team = tournament.teams.find((t) => t.id === profile.team);
-      if (team) return team.name;
-    }
-
-    // 兜底
-    return "TES";
-  }
-
-  const team = getTeamName();
+  // 这场是真实赛事录像：AG（我方） vs 微博，硬编码对阵以保证文本/事件一致。
+  const team = MATCH_HOME_TEAM;
+  const opponent = MATCH_AWAY_TEAM;
   const {
     addLog,
     addFlag,
     resolveFlag,
     setScore,
-    setMatchMinute,
+    setMatchSeconds,
     endMatch,
     resetMatch,
     score,
-    matchMinute,
+    matchSeconds,
     flags,
   } = useAppStore();
   const matchEnded = useAppStore((s) => s.matchEnded);
@@ -268,8 +256,8 @@ function Match() {
     [msgs],
   );
   const promptChoices = useMemo(
-    () => buildPromptChoices(input, matchMinute, score, lastEventText, matchEnded),
-    [input, matchMinute, score, lastEventText, matchEnded],
+    () => buildPromptChoices(input, matchSeconds, score, lastEventText, matchEnded),
+    [input, matchSeconds, score, lastEventText, matchEnded],
   );
 
   // Reset on mount
@@ -282,17 +270,20 @@ function Match() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs]);
 
-  // Match clock
+  // Match clock — 每秒 tick 推进 (replaySpeed × 1x基准秒数) 的比赛秒。
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => {
-      setMatchMinute(Math.min(MATCH_DURATION_MINUTES, matchMinute + replaySpeed));
+      const advance = replaySpeed * MATCH_SECONDS_PER_REAL_SECOND_1X;
+      setMatchSeconds(Math.min(MATCH_DURATION_SECONDS, matchSeconds + advance));
     }, 1000);
     return () => clearInterval(t);
-  }, [running, matchMinute, replaySpeed, setMatchMinute]);
+  }, [running, matchSeconds, replaySpeed, setMatchSeconds]);
 
-  // Trigger timeline events
+  // Trigger timeline events — 一个 tick 内若跨过多个事件，全部按顺序触发。
+  // 读 store 的当前秒数（而不是闭包值），避免上一场残留 state 导致挂载时一口气把所有事件刷出来。
   useEffect(() => {
+    const sec = useAppStore.getState().matchSeconds;
     if (eventIdx >= TIMELINE.length) {
       if (!useAppStore.getState().matchEnded) {
         const ours = useAppStore.getState().score.ours;
@@ -301,13 +292,14 @@ function Match() {
       }
       return;
     }
-    const next = TIMELINE[eventIdx];
-    if (matchMinute >= next.minute) {
-      triggerEvent(eventIdx);
-      setEventIdx(eventIdx + 1);
+    let idx = eventIdx;
+    while (idx < TIMELINE.length && sec >= TIMELINE[idx].seconds) {
+      triggerEvent(idx);
+      idx++;
     }
+    if (idx !== eventIdx) setEventIdx(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchMinute, eventIdx]);
+  }, [matchSeconds, eventIdx]);
 
   // Idle opener
   useEffect(() => {
@@ -354,7 +346,7 @@ function Match() {
       text,
       emotion,
       intensity,
-      minute: useAppStore.getState().matchMinute,
+      seconds: useAppStore.getState().matchSeconds,
       golden,
       flagAction,
       flagHit,
@@ -365,7 +357,7 @@ function Match() {
     const isPeak = intensity >= 4;
     const entry: EmotionLogEntry = {
       id: m.id,
-      matchMinute: m.minute,
+      matchSeconds: m.seconds,
       realTime: Date.now(),
       userInput,
       agentResponse: text,
@@ -382,7 +374,7 @@ function Match() {
         id: uid(),
         creator: "agent",
         content: flagContent,
-        createdMinute: m.minute,
+        createdMinute: Math.round(m.seconds / 60),
         status: "open",
       });
     }
@@ -390,7 +382,7 @@ function Match() {
       const f = useAppStore
         .getState()
         .flags.find((x) => x.content === flagContent && x.status === "open");
-      if (f) resolveFlag(f.id, !!flagHit, m.minute);
+      if (f) resolveFlag(f.id, !!flagHit, m.seconds);
     }
 
     // Trigger effects + TTS in sequence (effect first, TTS slight delay)
@@ -401,8 +393,14 @@ function Match() {
   function triggerEvent(idx: number) {
     const ev = TIMELINE[idx];
     // system bubble
-    setMsgs((cur) => [...cur, { id: uid(), role: "system", text: ev.text, minute: ev.minute }]);
-    if (ev.scoreDelta) setScore(ev.scoreDelta);
+    setMsgs((cur) => [...cur, { id: uid(), role: "system", text: ev.text, seconds: ev.seconds }]);
+    if (ev.scoreDelta) {
+      const prev = useAppStore.getState().score;
+      setScore({
+        ours: prev.ours + ev.scoreDelta.ours,
+        theirs: prev.theirs + ev.scoreDelta.theirs,
+      });
+    }
     // agent reaction shortly after
     setTimeout(() => {
       pushAgent(
@@ -422,9 +420,9 @@ function Match() {
     const text = (textOverride ?? input).trim();
     if (!text || replying) return;
     lastInputTime.current = Date.now();
-    const minute = useAppStore.getState().matchMinute;
+    const seconds = useAppStore.getState().matchSeconds;
     const curScore = useAppStore.getState().score;
-    const nextMsgs: ChatMsg[] = [...msgs, { id: uid(), role: "user", text, minute }];
+    const nextMsgs: ChatMsg[] = [...msgs, { id: uid(), role: "user", text, seconds }];
     setMsgs(nextMsgs);
     setInput("");
     setReplying(true);
@@ -443,8 +441,8 @@ function Match() {
 
       const systemContent = buildLiveMatchSystemPrompt(profile, {
         ourTeam: team,
-        opponent: "JDG",
-        minute,
+        opponent,
+        minute: Math.floor(seconds / 60),
         score: curScore,
         lastEventText,
       });
@@ -468,7 +466,7 @@ function Match() {
       );
     } catch {
       // API 挂了就用兜底文案，至少别让赛中体验断掉。
-      const fallback = buildUserFeedbackFallback(text, minute, curScore, lastEventText);
+      const fallback = buildUserFeedbackFallback(text, seconds, curScore, lastEventText);
       setAgentNotice("AI 连接不稳，已切换成本地兜底陪聊。");
       pushAgent(
         fallback.text,
@@ -488,7 +486,7 @@ function Match() {
 
   const goldenCount = msgs.filter((m) => m.golden).length;
 
-  function changeReplaySpeed(speed: number) {
+  function changeReplaySpeed(speed: SpeedOption) {
     setReplaySpeed(speed);
     updateReplaySpeedSearch(speed);
   }
@@ -526,7 +524,7 @@ function Match() {
             <LiveMetric
               icon={Activity}
               label="对局时间"
-              value={matchEnded ? "FT" : `${matchMinute}'`}
+              value={matchEnded ? "FT" : formatMatchTime(matchSeconds)}
             />
             <LiveMetric icon={Zap} label="情绪峰值" value={`${goldenCount} 句`} />
           </div>
@@ -545,7 +543,7 @@ function Match() {
             </div>
             <div className="text-center">
               <div className="text-[10px] font-display uppercase tracking-widest text-accent">
-                {matchEnded ? "比赛结束" : `第 ${matchMinute} 分钟`}
+                {matchEnded ? "比赛结束" : formatMatchTime(matchSeconds)}
               </div>
               <div className="font-display text-xl glow-text-primary sm:text-2xl">VS</div>
               <div className="mt-1 flex justify-center gap-1.5 text-[10px]">
@@ -559,7 +557,7 @@ function Match() {
             </div>
             <div className="text-center">
               <div className="text-[10px] font-display uppercase tracking-widest text-muted-foreground">
-                JDG
+                {opponent}
               </div>
               <div className="font-mono text-3xl font-bold glow-text-ember sm:text-4xl">
                 {score.theirs}
@@ -570,24 +568,24 @@ function Match() {
           <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/5">
             <div
               className="h-full bg-gradient-to-r from-primary to-accent transition-all"
-              style={{ width: `${(matchMinute / MATCH_DURATION_MINUTES) * 100}%` }}
+              style={{ width: `${(matchSeconds / MATCH_DURATION_SECONDS) * 100}%` }}
             />
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3">
             <div className="flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider text-muted-foreground">
               <Gauge className="h-3.5 w-3.5 text-accent" />
-              回放速度
+              倍速回放
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {REPLAY_SPEED_OPTIONS.map((option) => (
+              {SPEED_OPTIONS.map((speed) => (
                 <Chip
-                  key={option.value}
+                  key={speed}
                   size="sm"
                   tone="muted"
-                  selected={replaySpeed === option.value}
-                  onClick={() => changeReplaySpeed(option.value)}
+                  selected={replaySpeed === speed}
+                  onClick={() => changeReplaySpeed(speed)}
                 >
-                  {option.label} x{option.value}
+                  {speed}x
                 </Chip>
               ))}
             </div>
@@ -763,7 +761,7 @@ function Bubble({ msg }: { msg: ChatMsg }) {
         animate={{ opacity: 1, scale: 1 }}
         className="mx-auto max-w-md rounded-full border border-border/60 bg-white/5 px-4 py-1.5 text-center font-mono text-[11px] uppercase tracking-wider text-muted-foreground"
       >
-        ⚡ {msg.minute}' · {msg.text}
+        ⚡ {formatMatchTime(msg.seconds)} · {msg.text}
       </motion.div>
     );
   }

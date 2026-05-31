@@ -10,15 +10,15 @@ interface AppState {
   logs: EmotionLogEntry[];
   flags: FlagRecord[];
   score: { ours: number; theirs: number };
-  matchMinute: number;
+  matchSeconds: number;
   matchEnded: boolean;
   finalResult: "win" | "loss" | "draw" | null;
 
   addLog: (entry: EmotionLogEntry) => void;
   addFlag: (flag: FlagRecord) => void;
-  resolveFlag: (id: string, hit: boolean, minute: number) => void;
+  resolveFlag: (id: string, hit: boolean, atSeconds: number) => void;
   setScore: (s: { ours: number; theirs: number }) => void;
-  setMatchMinute: (m: number) => void;
+  setMatchSeconds: (s: number) => void;
   endMatch: (result: "win" | "loss" | "draw") => void;
   resetMatch: () => void;
 }
@@ -32,27 +32,29 @@ export const useAppStore = create<AppState>()(
       logs: [],
       flags: [],
       score: { ours: 0, theirs: 0 },
-      matchMinute: 0,
+      matchSeconds: 0,
       matchEnded: false,
       finalResult: null,
 
       addLog: (entry) => set((s) => ({ logs: [...s.logs, entry] })),
       addFlag: (flag) => set((s) => ({ flags: [...s.flags, flag] })),
-      resolveFlag: (id, hit, minute) =>
+      resolveFlag: (id, hit, atSeconds) =>
         set((s) => ({
           flags: s.flags.map((f) =>
-            f.id === id ? { ...f, status: hit ? "hit" : "miss", resolvedMinute: minute } : f,
+            f.id === id
+              ? { ...f, status: hit ? "hit" : "miss", resolvedMinute: Math.round(atSeconds / 60) }
+              : f,
           ),
         })),
       setScore: (s) => set({ score: s }),
-      setMatchMinute: (m) => set({ matchMinute: m }),
+      setMatchSeconds: (s) => set({ matchSeconds: s }),
       endMatch: (result) => set({ matchEnded: true, finalResult: result }),
       resetMatch: () =>
         set({
           logs: [],
           flags: [],
           score: { ours: 0, theirs: 0 },
-          matchMinute: 0,
+          matchSeconds: 0,
           matchEnded: false,
           finalResult: null,
         }),

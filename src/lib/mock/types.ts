@@ -144,7 +144,7 @@ export interface UserProfile {
 
 export interface EmotionLogEntry {
   id: string;
-  matchMinute: number; // 0..N within match
+  matchSeconds: number; // 0..N within match, in seconds
   realTime: number; // ms timestamp
   userInput: string | null; // null = AI proactive / event-driven
   agentResponse: string;
@@ -165,7 +165,7 @@ export interface FlagRecord {
 }
 
 export interface MatchEvent {
-  minute: number; // in-match minute (we accelerate)
+  seconds: number; // elapsed in-match seconds (we accelerate)
   type: "kickoff" | "team_kill" | "objective" | "ace" | "concede" | "comeback" | "endgame";
   text: string; // system event bubble text
   scoreDelta?: { ours: number; theirs: number };
@@ -177,6 +177,11 @@ export interface MatchEvent {
     isGoldenQuote?: boolean;
     flag?: { action: "create" | "resolve"; content: string; hit?: boolean };
   };
+}
+
+export interface MatchLineupPick {
+  player: string;
+  hero: string;
 }
 
 export interface RecommendedMatch {

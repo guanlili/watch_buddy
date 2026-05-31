@@ -5,7 +5,13 @@ import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { useAppStore } from "@/lib/mock/store";
-import { TOURNAMENTS } from "@/lib/mock/types";
+import {
+  MATCH_HOME_TEAM,
+  MATCH_HOME_TEAM_FULL,
+  MATCH_AWAY_TEAM,
+  MATCH_AWAY_TEAM_FULL,
+  MATCH_LINEUP,
+} from "@/lib/mock/timeline";
 import {
   Share2,
   Bell,
@@ -15,6 +21,7 @@ import {
   ClipboardList,
   Siren,
   Users,
+  Crosshair,
 } from "lucide-react";
 
 export const Route = createFileRoute("/pre-match")({
@@ -28,27 +35,12 @@ function PreMatch() {
   const profile = useAppStore((s) => s.profile);
   const nav = useNavigate();
 
-  // 获取用户选择的主队名称
-  function getTeamName(): string {
-    if (!profile) return "TES";
+  // 真实赛事固定对阵：成都 AG 超玩会（我方） vs 微博 WB。
+  const team = MATCH_HOME_TEAM;
+  const teamFull = MATCH_HOME_TEAM_FULL;
+  const opponent = MATCH_AWAY_TEAM;
+  const opponentFull = MATCH_AWAY_TEAM_FULL;
 
-    // 如果是自定义的队伍
-    if (profile.team === "custom" && profile.customTeam) {
-      return profile.customTeam;
-    }
-
-    // 从TOURNAMENTS中找到对应的队伍
-    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
-    if (tournament) {
-      const team = tournament.teams.find((t) => t.id === profile.team);
-      if (team) return team.name;
-    }
-
-    // 兜底
-    return "TES";
-  }
-
-  const team = getTeamName();
   const [secondsLeft, setSecondsLeft] = useState(KICKOFF_SECONDS);
   const [muted, setMuted] = useState(false);
 
@@ -74,7 +66,12 @@ function PreMatch() {
           <div className="font-display text-xs uppercase tracking-[0.3em] text-accent">
             赛前阵地 · PRE-MATCH ARENA
           </div>
-          <h1 className="title-stroke mt-2 text-4xl sm:text-5xl">{team} vs JDG</h1>
+          <h1 className="title-stroke mt-2 text-4xl sm:text-5xl">
+            {teamFull} vs {opponentFull}
+          </h1>
+          <div className="mt-1 text-xs text-muted-foreground">
+            KPL 常规赛 · BO5 第一局 · 王者峡谷
+          </div>
         </motion.div>
 
         <MatchStageRail current="pre" className="mt-5" />
@@ -89,7 +86,9 @@ function PreMatch() {
             <span className="opacity-50">:</span>
             {ss}
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">BO5 第一局 · 召唤师峡谷</div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            王者荣耀 · KPL · {team} vs {opponent}
+          </div>
         </GlassCard>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -110,10 +109,35 @@ function PreMatch() {
           />
         </div>
 
+        {/* BP / Lineup */}
+        <GlassCard glow="primary" className="mt-6">
+          <div className="mb-3 flex items-center gap-2 text-xs">
+            <Crosshair className="h-3.5 w-3.5 text-accent" />
+            <span className="rounded-md bg-accent/30 px-2 py-0.5 font-display uppercase tracking-wider text-accent">
+              BP 阵容
+            </span>
+            <span className="text-muted-foreground">本场首发与英雄选择</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <LineupColumn
+              title={team}
+              subtitle="我方 · HOME"
+              picks={MATCH_LINEUP.home}
+              tone="ours"
+            />
+            <LineupColumn
+              title={opponent}
+              subtitle="对面 · AWAY"
+              picks={MATCH_LINEUP.away}
+              tone="theirs"
+            />
+          </div>
+        </GlassCard>
+
         {/* Team matchup */}
         <div className="mt-6 grid grid-cols-2 gap-3">
           <TeamCard name={team} side="ours" winRate={62} form={["W", "W", "L", "W", "W"]} />
-          <TeamCard name="JDG" side="theirs" winRate={58} form={["L", "W", "W", "L", "W"]} />
+          <TeamCard name={opponent} side="theirs" winRate={58} form={["L", "W", "W", "L", "W"]} />
         </div>
 
         {/* AI prediction */}
@@ -126,13 +150,14 @@ function PreMatch() {
           </div>
           <p className="text-base leading-relaxed">
             🐶 这把 <span className="font-display text-accent">{team}</span>{" "}
-            我赌赢，但中期可能崩一波。如果对面拿大龙别急，咱信偷家剧本。
+            的大马超推进体系版本答案，赌赢。中期可能被 {opponent}{" "}
+            子墨杨戬反打一波，但只要稳住经济，21 分钟前就能推上路高地。
             <span className="ml-1 italic text-muted-foreground">（毒奶生效，反向押注请慎重）</span>
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             <Stat label="一血" value={`${team} 55%`} />
-            <Stat label="先拿龙" value={`${team} 60%`} />
-            <Stat label="比赛时长" value="32-38min" />
+            <Stat label="先拿暴君" value={`${team} 60%`} />
+            <Stat label="比赛时长" value="20-25min" />
           </div>
         </GlassCard>
 
@@ -180,6 +205,39 @@ function PrepSignal({
         {title}
       </div>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+function LineupColumn({
+  title,
+  subtitle,
+  picks,
+  tone,
+}: {
+  title: string;
+  subtitle: string;
+  picks: { player: string; hero: string }[];
+  tone: "ours" | "theirs";
+}) {
+  const accent = tone === "ours" ? "text-accent" : "text-destructive";
+  const ring = tone === "ours" ? "border-accent/40" : "border-destructive/40";
+  return (
+    <div className={`rounded-xl border ${ring} bg-white/[0.03] p-3`}>
+      <div className="flex items-baseline justify-between">
+        <div className={`font-display text-base ${accent}`}>{title}</div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {subtitle}
+        </div>
+      </div>
+      <ul className="mt-2 space-y-1.5">
+        {picks.map((p) => (
+          <li key={p.player} className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{p.player}</span>
+            <span className="font-mono">{p.hero}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

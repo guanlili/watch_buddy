@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/lib/mock/store";
 import { TOURNAMENTS } from "@/lib/mock/types";
+import { MATCH_HOME_TEAM, MATCH_AWAY_TEAM, MATCH_DURATION_SECONDS } from "@/lib/mock/timeline";
 import { GlassCard } from "@/components/GlassCard";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { NeonButton } from "@/components/NeonButton";
@@ -38,6 +39,13 @@ export const Route = createFileRoute("/post-match")({
   component: PostMatch,
 });
 
+function formatMatchTime(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
 function PostMatch() {
   const profile = useAppStore((s) => s.profile);
   const logs = useAppStore((s) => s.logs);
@@ -46,27 +54,9 @@ function PostMatch() {
   const finalResult = useAppStore((s) => s.finalResult);
   const nav = useNavigate();
 
-  // 获取用户选择的主队名称
-  function getTeamName(): string {
-    if (!profile) return "TES";
-
-    // 如果是自定义的队伍
-    if (profile.team === "custom" && profile.customTeam) {
-      return profile.customTeam;
-    }
-
-    // 从TOURNAMENTS中找到对应的队伍
-    const tournament = TOURNAMENTS.find((t) => t.id === profile.tournament);
-    if (tournament) {
-      const team = tournament.teams.find((t) => t.id === profile.team);
-      if (team) return team.name;
-    }
-
-    // 兜底
-    return "TES";
-  }
-
-  const team = getTeamName();
+  // 本场是真实赛事录像：AG vs 微博，对阵硬编码以保证文案/海报一致。
+  const team = MATCH_HOME_TEAM;
+  const opponent = MATCH_AWAY_TEAM;
 
   // 从 profile 取本命选手与同队队友列表作为快捷推荐。
   const initialPlayer = useMemo(() => {
@@ -171,7 +161,7 @@ function PostMatch() {
   // 兜底文案：API 失败时显示，确保页面不空。
   const fallbackLightCopy =
     goldenQuotes[0]?.agentResponse ?? `${team} 这把不容易，反正我吐槽完了。`;
-  const fallbackDeepCopy = `【${team} ${finalResult === "win" ? "胜" : finalResult === "loss" ? "负" : "平"} JDG · ${score.ours}-${score.theirs}】
+  const fallbackDeepCopy = `【${team} ${finalResult === "win" ? "胜" : finalResult === "loss" ? "负" : "平"} ${opponent} · ${score.ours}-${score.theirs}】
 
 最帅的瞬间：${peaks[0]?.eventDescription ?? "全程都帅"}
 最破防瞬间：${peaks.find((p) => p.emotion === "devastated")?.eventDescription ?? "无"}
@@ -199,12 +189,12 @@ function PostMatch() {
       emotionIntensity,
       competitionName,
       homeTeam: team,
-      awayTeam: "JDG",
+      awayTeam: opponent,
       homeScore: score.ours,
       awayScore: score.theirs,
       result,
       keyEvent: peakLog?.eventDescription ?? "全场拉锯，节奏起伏不断",
-      peakMinute: peakLog?.matchMinute ?? 0,
+      peakMinute: peakLog ? Math.round(peakLog.matchSeconds / 60) : 0,
       preMatchExpectation: userFlag?.content ?? "看主队稳定发挥，争取拿下这一分",
       userQuote: userQuotes[0] ?? goldenQuotes[0]?.agentResponse ?? "",
       emotionType: peakLog ? EMOTION_MAP[peakLog.emotion].label : "紧张",
@@ -250,7 +240,7 @@ function PostMatch() {
       arr[i % Math.max(1, arr.length)]?.agentResponse;
     return {
       team,
-      opponent: "JDG",
+      opponent,
       score,
       finalResult: finalResult as "win" | "loss" | "draw" | null,
       goldenQuote: safe(goldenQuotes, v),
@@ -416,6 +406,7 @@ function PostMatch() {
                   <Poster
                     variant={i}
                     team={team}
+                    opponent={opponent}
                     score={score}
                     finalResult={finalResult}
                     goldenQuote={
@@ -550,7 +541,7 @@ function PostMatch() {
               {goldenQuotes.map((q) => (
                 <li key={q.id} className="rounded-lg bg-white/5 p-2">
                   <div className="text-[10px] font-mono uppercase text-muted-foreground">
-                    {q.matchMinute}' · {EMOTION_MAP[q.emotion].label}
+                    {formatMatchTime(q.matchSeconds)} · {EMOTION_MAP[q.emotion].label}
                   </div>
                   <div>"{q.agentResponse}"</div>
                 </li>
@@ -616,9 +607,9 @@ function EmotionCurve() {
     h = 180,
     pad = 30;
   if (logs.length === 0) return <div className="text-muted-foreground">无数据</div>;
-  const maxMin = Math.max(...logs.map((l) => l.matchMinute), 45);
+  const maxSec = Math.max(...logs.map((l) => l.matchSeconds), MATCH_DURATION_SECONDS);
   const pts = logs.map((l) => ({
-    x: pad + (l.matchMinute / maxMin) * (w - pad * 2),
+    x: pad + (l.matchSeconds / maxSec) * (w - pad * 2),
     y: h - pad - ((l.intensity - 1) / 4) * (h - pad * 2),
     log: l,
   }));
@@ -687,7 +678,7 @@ function EmotionCurve() {
           fontSize="9"
           fontFamily="JetBrains Mono"
         >
-          {maxMin}'
+          {Math.round(maxSec / 60)}'
         </text>
       </svg>
     </div>
@@ -697,6 +688,7 @@ function EmotionCurve() {
 function Poster({
   variant,
   team,
+  opponent,
   score,
   finalResult,
   goldenQuote,
@@ -705,6 +697,7 @@ function Poster({
 }: {
   variant: 0 | 1 | 2;
   team: string;
+  opponent: string;
   score: { ours: number; theirs: number };
   finalResult: string | null;
   goldenQuote: string;
@@ -766,7 +759,8 @@ function Poster({
             {score.ours} : {score.theirs}
           </div>
           <div className="text-[10px] uppercase tracking-wider opacity-70">
-            vs JDG · {finalResult === "win" ? "WIN" : finalResult === "loss" ? "LOSS" : "DRAW"}
+            vs {opponent} ·{" "}
+            {finalResult === "win" ? "WIN" : finalResult === "loss" ? "LOSS" : "DRAW"}
           </div>
         </div>
         <div>
