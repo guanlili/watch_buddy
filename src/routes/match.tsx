@@ -195,6 +195,71 @@ function buildUserFeedbackFallback(
   };
 }
 
+// 宽口径情绪词表：USER_RESPONSE_PACKS 是用来生成兜底回复的小词表，捕捉范围太窄
+// （比如 "我生气了" 就漏了），所以单独维护一个更全的「检测词表」。
+// 顺序敏感：先短词包后长词包会被误命中，所以高强度长词优先匹配。
+const USER_EMOTION_KEYWORDS: Array<{
+  emotion: EmotionLabel;
+  intensity: 3 | 4 | 5;
+  keywords: string[];
+}> = [
+  // —— anger（用户在骂 / 上火）——
+  {
+    emotion: "anger",
+    intensity: 5,
+    keywords: ["气死", "气炸", "怒了", "火大", "上头了", "破防骂人"],
+  },
+  {
+    emotion: "anger",
+    intensity: 4,
+    keywords: [
+      "生气",
+      "我气",
+      "烦躁",
+      "卧槽",
+      "我操",
+      "我草",
+      "草尼玛",
+      "tm",
+      "TM",
+      "tmd",
+      "服了",
+      "什么玩意",
+      "啥玩意",
+      "辣鸡",
+      "拉跨",
+      "送的",
+      "送了",
+      "无语",
+      "傻逼",
+      "煞笔",
+      "我吐了",
+    ],
+  },
+  { emotion: "anger", intensity: 3, keywords: ["怒", "烦", "气", "燥"] },
+  // —— ecstasy（上头 / 狂喜）——
+  {
+    emotion: "ecstasy",
+    intensity: 5,
+    keywords: ["yyds", "YYDS", "封神", "起飞了", "tql", "TQL"],
+  },
+  {
+    emotion: "ecstasy",
+    intensity: 4,
+    keywords: ["太爽", "爽了", "嗨爆", "牛批", "牛逼", "nb", "NB", "卧槽稳", "好家伙", "舒服了"],
+  },
+  // —— devastated（破防 / 蓝瘦）——
+  {
+    emotion: "devastated",
+    intensity: 4,
+    keywords: ["难受", "心态炸", "心态崩了", "蓝瘦", "寄了", "完蛋", "翻车", "崩盘", "我裂开"],
+  },
+  { emotion: "devastated", intensity: 3, keywords: ["唉", "哭", "心态"] },
+  // —— tension（紧张）——
+  { emotion: "tension", intensity: 4, keywords: ["紧张", "屏息", "怕输", "心跳"] },
+  { emotion: "tension", intensity: 3, keywords: ["怕", "慌", "急"] },
+];
+
 // 关键字嗅探出情绪与强度——给视觉特效/情绪日志用，文本由 LLM 出。
 function inferUserReplyAffect(
   text: string,
@@ -204,6 +269,13 @@ function inferUserReplyAffect(
   if (["赌", "预测", "flag"].some((k) => lower.includes(k))) {
     return { emotion: "tension", intensity: 4, isGoldenQuote: true };
   }
+  // 先走宽词表，命中即返回（按强度从高到低排，确保更具体的长词优先）。
+  for (const pack of USER_EMOTION_KEYWORDS) {
+    if (pack.keywords.some((k) => text.includes(k))) {
+      return { emotion: pack.emotion, intensity: pack.intensity, isGoldenQuote: false };
+    }
+  }
+  // 再走 USER_RESPONSE_PACKS（与兜底回复共享词表），保留旧行为。
   const matchedPack = USER_RESPONSE_PACKS.find((pack) =>
     pack.keywords.some((k) => text.includes(k)),
   );
@@ -353,6 +425,7 @@ function Match() {
     flagContent?: string,
     flagHit?: boolean,
     userInput: string | null = null,
+    skipEffect = false,
   ) {
     const m: ChatMsg = {
       id: uid(),
@@ -400,7 +473,7 @@ function Match() {
     }
 
     // Trigger effects + TTS in sequence (effect first, TTS slight delay)
-    if (intensity >= 4) fireEffect(emotion);
+    if (intensity >= 4 && !skipEffect) fireEffect(emotion);
     if (soundOnRef.current) setTimeout(() => speakTTS(text, { emotion, intensity }), 250);
   }
 
@@ -436,12 +509,27 @@ function Match() {
     lastInputTime.current = Date.now();
     const seconds = useAppStore.getState().matchSeconds;
     const curScore = useAppStore.getState().score;
-    const nextMsgs: ChatMsg[] = [...msgs, { id: uid(), role: "user", text, seconds }];
+    // 先识别用户这条消息的情绪 / 强度，把它当作 user 气泡自带的情绪 metadata。
+    const affect = inferUserReplyAffect(text, curScore);
+    const nextMsgs: ChatMsg[] = [
+      ...msgs,
+      {
+        id: uid(),
+        role: "user",
+        text,
+        seconds,
+        emotion: affect.emotion,
+        intensity: affect.intensity,
+      },
+    ];
     setMsgs(nextMsgs);
     setInput("");
     setReplying(true);
+    // 用户主动发送时立刻触发特效（>=3 让大多数有情绪的发言都能看见反馈，
+    // 不只在峰值才亮）。后面 agent 回复就不再重复同一发特效，避免 1 秒内两次闪屏。
+    const userTriggeredEffect = affect.intensity >= 3;
+    if (userTriggeredEffect) fireEffect(affect.emotion);
 
-    const affect = inferUserReplyAffect(text, curScore);
     const demo = getDemoMode();
 
     try {
@@ -462,6 +550,7 @@ function Match() {
         minute: Math.floor(seconds / 60),
         score: curScore,
         lastEventText,
+        userMood: { emotion: affect.emotion, intensity: affect.intensity },
       });
 
       const { reply } = await withTimeout(
@@ -483,6 +572,7 @@ function Match() {
         undefined,
         undefined,
         text,
+        userTriggeredEffect,
       );
     } catch {
       // API 挂了（或超时 / 演示强制兜底）就用本地文案，至少别让赛中体验断掉。
@@ -498,6 +588,7 @@ function Match() {
         undefined,
         undefined,
         text,
+        userTriggeredEffect,
       );
     } finally {
       setReplying(false);
@@ -839,7 +930,9 @@ function Bubble({ msg }: { msg: ChatMsg }) {
     );
   }
   const isUser = msg.role === "user";
-  const meta = msg.emotion ? EMOTION_MAP[msg.emotion] : null;
+  // 用户气泡：只在强度 >=3 时才挂情绪标签，平淡发言不打扰；搭子始终显示。
+  const showMeta = msg.emotion && (!isUser || (msg.intensity ?? 0) >= 3);
+  const meta = showMeta && msg.emotion ? EMOTION_MAP[msg.emotion] : null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -854,9 +947,11 @@ function Bubble({ msg }: { msg: ChatMsg }) {
       <div
         className={`max-w-[78%] rounded-2xl px-4 py-2.5 ${isUser ? "bg-accent/20 neon-border-accent" : "glass neon-border-primary"}`}
       >
-        {meta && !isUser && (
+        {meta && (
           <div
-            className="mb-1 flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider"
+            className={`mb-1 flex items-center gap-1.5 text-[10px] font-display uppercase tracking-wider ${
+              isUser ? "justify-end" : ""
+            }`}
             style={{ color: meta.color }}
           >
             <span>{meta.emoji}</span>

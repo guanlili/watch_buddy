@@ -135,11 +135,7 @@ export function speakTTS(text: string, opts: SpeakOptions = {}) {
   // intensity 2 = 基准；越高越夸张。破防方向的强度让音调反向下沉，避免越激动越尖。
   const boost = (intensity - 2) * 0.06;
   const rate = clamp(base.rate + boost, 0.8, 1.6);
-  const pitch = clamp(
-    base.pitch + (emotion === "devastated" ? -Math.abs(boost) : boost),
-    0.6,
-    1.8,
-  );
+  const pitch = clamp(base.pitch + (emotion === "devastated" ? -Math.abs(boost) : boost), 0.6, 1.8);
   try {
     window.speechSynthesis.cancel();
     for (const seg of splitForProsody(text)) {
