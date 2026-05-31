@@ -64,7 +64,7 @@ function WelcomeCard() {
       setTyped(greeting.slice(0, i));
       if (i >= greeting.length) clearInterval(t);
     }, 35);
-    setTimeout(() => speakTTS(greeting), 200);
+    setTimeout(() => speakTTS(greeting, { emotion: "ecstasy", intensity: 3 }), 200);
     return () => clearInterval(t);
   }, [greeting, nav, profile]);
 

@@ -9,8 +9,8 @@ export const MATCH_AWAY_TEAM_FULL = "微博 WB";
 export const MATCH_RESULT: "win" | "loss" | "draw" = "win"; // AG 胜
 
 export const MATCH_DURATION_SECONDS = 1275; // 21:15
-// 1x 倍速：1 真实秒 = 30 比赛秒。整场约 43 秒打完。
-export const MATCH_SECONDS_PER_REAL_SECOND_1X = 30;
+// 1x 倍速：1 真实秒 = 1 比赛秒（真实直播节奏）。倍速档位走 0.5/2/4 提速。
+export const MATCH_SECONDS_PER_REAL_SECOND_1X = 1;
 export const SPEED_OPTIONS = [0.5, 1, 2, 4] as const;
 export type SpeedOption = (typeof SPEED_OPTIONS)[number];
 export const DEFAULT_SPEED: SpeedOption = 1;

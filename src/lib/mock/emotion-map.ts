@@ -93,15 +93,62 @@ export function playBeep(freq: number, duration = 0.25) {
   }
 }
 
-export function speakTTS(text: string) {
+// 解说搭档的声音 prosody 设定：语速中等偏快、有情绪起伏。
+// 精彩时刻提速 + 升调；劣势时降调但不丧；其余情绪用强度做微调。
+const TTS_PROSODY: Record<EmotionLabel, { rate: number; pitch: number }> = {
+  ecstasy: { rate: 1.3, pitch: 1.3 },
+  anger: { rate: 1.25, pitch: 1.15 },
+  tension: { rate: 1.2, pitch: 1.1 },
+  devastated: { rate: 1.0, pitch: 0.9 },
+  calm: { rate: 1.1, pitch: 1.0 },
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+// 把整句按标点切成短段，逐段入队 → speechSynthesis 在每段之间自然停顿，
+// 听起来像真人讲话的吸气 / 顿挫，而不是一口气念完。
+function splitForProsody(text: string): string[] {
+  const segs: string[] = [];
+  let buf = "";
+  for (const ch of text) {
+    buf += ch;
+    if (/[，。！？!?,.~～；;]/.test(ch) && buf.trim()) {
+      segs.push(buf.trim());
+      buf = "";
+    }
+  }
+  if (buf.trim()) segs.push(buf.trim());
+  return segs.length ? segs : [text];
+}
+
+export interface SpeakOptions {
+  emotion?: EmotionLabel;
+  intensity?: 1 | 2 | 3 | 4 | 5;
+}
+
+export function speakTTS(text: string, opts: SpeakOptions = {}) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
+  const { emotion = "calm", intensity = 2 } = opts;
+  const base = TTS_PROSODY[emotion];
+  // intensity 2 = 基准；越高越夸张。破防方向的强度让音调反向下沉，避免越激动越尖。
+  const boost = (intensity - 2) * 0.06;
+  const rate = clamp(base.rate + boost, 0.8, 1.6);
+  const pitch = clamp(
+    base.pitch + (emotion === "devastated" ? -Math.abs(boost) : boost),
+    0.6,
+    1.8,
+  );
   try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "zh-CN";
-    u.rate = 1.15;
-    u.pitch = 1.05;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    for (const seg of splitForProsody(text)) {
+      const u = new SpeechSynthesisUtterance(seg);
+      u.lang = "zh-CN";
+      u.rate = rate;
+      u.pitch = pitch;
+      window.speechSynthesis.speak(u);
+    }
   } catch {
     /* noop */
   }

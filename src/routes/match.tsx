@@ -312,17 +312,20 @@ function Match() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchSeconds, eventIdx]);
 
-  // Idle opener
+  // Idle opener —— 赛中对话节奏：用户停说话后至少等 2~3 分钟，再主动起一句，
+  // 避免连续刷屏的压迫感（每轮随机 120~180s 抖动一下，自然些）。
+  const idleThresholdRef = useRef(120 + Math.random() * 60);
   useEffect(() => {
     const t = setInterval(() => {
       if (!running || useAppStore.getState().matchEnded) return;
       const idle = (Date.now() - lastInputTime.current) / 1000;
-      if (idle > 15) {
+      if (idle > idleThresholdRef.current) {
         const opener = IDLE_OPENERS[Math.floor(Math.random() * IDLE_OPENERS.length)];
         pushAgent(opener.text, opener.emotion, opener.intensity, false, null);
         lastInputTime.current = Date.now();
+        idleThresholdRef.current = 120 + Math.random() * 60;
       }
-    }, 5000);
+    }, 15000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
@@ -398,7 +401,7 @@ function Match() {
 
     // Trigger effects + TTS in sequence (effect first, TTS slight delay)
     if (intensity >= 4) fireEffect(emotion);
-    if (soundOnRef.current) setTimeout(() => speakTTS(text), 250);
+    if (soundOnRef.current) setTimeout(() => speakTTS(text, { emotion, intensity }), 250);
   }
 
   function triggerEvent(idx: number) {
