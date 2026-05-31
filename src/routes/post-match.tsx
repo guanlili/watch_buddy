@@ -10,11 +10,15 @@ import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
 import { generatePoster } from "@/lib/api/image.functions";
 import { chatCompletion } from "@/lib/api/chat.functions";
-import { Input } from "@/components/Input";
 import { Textarea } from "@/components/Textarea";
-import { Chip } from "@/components/Chip";
 import { LoadingOverlay, ErrorState } from "@/components/StatusOverlay";
 import { buildPosterPrompt, type PosterContext, type PosterVariant } from "@/lib/prompts/poster";
+import {
+  HERO_POSTER_ASSETS,
+  PLAYER_POSTER_ASSETS,
+  findPosterAsset,
+  type PosterAsset,
+} from "@/lib/poster-assets";
 import {
   buildPostMatchCopyPrompt,
   type CopyResult,
@@ -58,7 +62,7 @@ function PostMatch() {
   const team = MATCH_HOME_TEAM;
   const opponent = MATCH_AWAY_TEAM;
 
-  // 从 profile 取本命选手与同队队友列表作为快捷推荐。
+  // 从 profile 取本命选手，优先在内置素材库里选中对应选手。
   const initialPlayer = useMemo(() => {
     if (!profile) return "";
     const tour = TOURNAMENTS.find((t) => t.id === profile.tournament);
@@ -66,32 +70,22 @@ function PostMatch() {
     const p = t?.players.find((x) => x.id === profile.player);
     return p?.name ?? profile.customPlayer ?? "";
   }, [profile]);
-  const teammatePlayers = useMemo(() => {
-    if (!profile) return [] as string[];
-    const tour = TOURNAMENTS.find((t) => t.id === profile.tournament);
-    const t = tour?.teams.find((x) => x.id === profile.team);
-    return t?.players.map((p) => p.name) ?? [];
-  }, [profile]);
-  // 按主追赛事给游戏角色一个 placeholder 提示。
-  const characterPlaceholder = useMemo(() => {
-    switch (profile?.tournament) {
-      case "kpl":
-        return "如：鲁班七号 / 后裔 / 公孙离…";
-      case "lpl":
-        return "如：劫 / 卡莎 / 阿狸…";
-      case "vct":
-        return "如：Jett / Sage / Phoenix…";
-      default:
-        return "选手在赛场上用的英雄 / 角色";
-    }
-  }, [profile]);
+  const initialPlayerAssetId = useMemo(
+    () => PLAYER_POSTER_ASSETS.find((asset) => asset.name === initialPlayer)?.id ?? "yi-nuo",
+    [initialPlayer],
+  );
 
   const [selectedPoster, setSelectedPoster] = useState<PosterVariant>(0);
   const [tier, setTier] = useState<"light" | "deep">("light");
-  // 用户配置：选手 / 游戏角色 / 想表达的话。
-  const [playerName, setPlayerName] = useState(initialPlayer);
-  const [gameCharacter, setGameCharacter] = useState("");
+  // 用户配置：只能从内置素材库选择选手 / 英雄，再补一句想表达的话。
+  const [selectedPlayerAssetId, setSelectedPlayerAssetId] = useState(initialPlayerAssetId);
+  const [selectedHeroAssetId, setSelectedHeroAssetId] = useState("ma-chao");
   const [userExpression, setUserExpression] = useState("");
+  const selectedPlayerAsset = findPosterAsset("player", selectedPlayerAssetId);
+  const selectedHeroAsset = findPosterAsset("hero", selectedHeroAssetId);
+  useEffect(() => {
+    setSelectedPlayerAssetId(initialPlayerAssetId);
+  }, [initialPlayerAssetId]);
   // 海报缓存：每个变体单独跟踪 url / loading / error，避免重复调 API。
   const [posterCache, setPosterCache] = useState<
     Record<PosterVariant, { loading: boolean; url?: string; error?: string }>
@@ -102,7 +96,7 @@ function PostMatch() {
   });
 
   // 配置一变就把所有缓存的海报作废——之前那张是按旧配置生成的，留着会让用户困惑。
-  const configSig = `${playerName}|${gameCharacter}|${userExpression}`;
+  const configSig = `${selectedPlayerAssetId}|${selectedHeroAssetId}|${userExpression}`;
   const lastSigRef = useRef(configSig);
   useEffect(() => {
     if (lastSigRef.current !== configSig) {
@@ -245,17 +239,36 @@ function PostMatch() {
       finalResult: finalResult as "win" | "loss" | "draw" | null,
       goldenQuote: safe(goldenQuotes, v),
       userQuote: userQuotes[v % Math.max(1, userQuotes.length)],
-      playerName: playerName.trim() || undefined,
-      gameCharacter: gameCharacter.trim() || undefined,
+      playerName: selectedPlayerAsset?.name,
+      gameCharacter: selectedHeroAsset?.name,
       userExpression: userExpression.trim() || undefined,
     };
   }
 
+  function posterReferencePrompt(): string {
+    if (!selectedPlayerAsset || !selectedHeroAsset) return "";
+    return `
+
+【素材库参考图】
+参考图 1 是选手素材「${selectedPlayerAsset.name}」：${selectedPlayerAsset.promptHint}
+参考图 2 是英雄素材「${selectedHeroAsset.name}」：${selectedHeroAsset.promptHint}
+请基于这两张素材生成原创赛后海报，保留选手/英雄的核心识别特征，不要直接复刻参考图的构图、背景和文字。`;
+  }
+
   async function generateForVariant(v: PosterVariant) {
+    if (!selectedPlayerAsset || !selectedHeroAsset) {
+      toast.error("请先选择选手和英雄素材。");
+      return;
+    }
     setPosterCache((cur) => ({ ...cur, [v]: { loading: true } }));
     try {
-      const prompt = buildPosterPrompt(v, posterContext(v));
-      const { url } = await generatePoster({ data: { prompt } });
+      const prompt = `${buildPosterPrompt(v, posterContext(v))}${posterReferencePrompt()}`;
+      const { url } = await generatePoster({
+        data: {
+          prompt,
+          referenceImageUrls: [selectedPlayerAsset.imageUrl, selectedHeroAsset.imageUrl],
+        },
+      });
       setPosterCache((cur) => ({ ...cur, [v]: { loading: false, url } }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -337,43 +350,19 @@ function PostMatch() {
 
           {/* 配置卡片 */}
           <GlassCard glow="primary" className="!p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
-                  选手
-                </label>
-                <Input
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="海报 C 位的选手 ID"
-                />
-                {teammatePlayers.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {teammatePlayers.map((name) => (
-                      <Chip
-                        key={name}
-                        selected={playerName === name}
-                        onClick={() => setPlayerName(name)}
-                      >
-                        {name}
-                      </Chip>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
-                  游戏角色
-                </label>
-                <Input
-                  value={gameCharacter}
-                  onChange={(e) => setGameCharacter(e.target.value)}
-                  placeholder={characterPlaceholder}
-                />
-                <div className="mt-1 text-[10px] text-muted-foreground">
-                  会画出该角色的外观、武器、技能特效。
-                </div>
-              </div>
+            <div className="grid gap-4">
+              <AssetPicker
+                title="选手素材"
+                assets={PLAYER_POSTER_ASSETS}
+                selectedId={selectedPlayerAssetId}
+                onSelect={setSelectedPlayerAssetId}
+              />
+              <AssetPicker
+                title="英雄素材"
+                assets={HERO_POSTER_ASSETS}
+                selectedId={selectedHeroAssetId}
+                onSelect={setSelectedHeroAssetId}
+              />
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-[11px] font-display uppercase tracking-widest text-muted-foreground">
                   你想说的话 <span className="text-muted-foreground/60">(海报底部标语)</span>
@@ -598,6 +587,64 @@ function PostSignal({
       <div className="mt-2 font-display text-2xl text-ecstasy">{value}</div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
     </div>
+  );
+}
+
+function AssetPicker({
+  title,
+  assets,
+  selectedId,
+  onSelect,
+}: {
+  title: string;
+  assets: PosterAsset[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="font-display text-[11px] uppercase tracking-widest text-muted-foreground">
+          {title}
+        </div>
+        <div className="text-[10px] text-muted-foreground">仅可选择内置素材</div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        {assets.map((asset) => {
+          const selected = selectedId === asset.id;
+          return (
+            <button
+              key={asset.id}
+              type="button"
+              onClick={() => onSelect(asset.id)}
+              className={`group overflow-hidden rounded-lg border bg-white/[0.04] text-left transition ${
+                selected
+                  ? "border-accent shadow-[0_0_18px_oklch(0.78_0.18_195_/_0.24)]"
+                  : "border-border hover:border-accent/60"
+              }`}
+              aria-pressed={selected}
+              title={asset.name}
+            >
+              <div className="aspect-[4/5] overflow-hidden bg-black/30">
+                <img
+                  src={asset.imageUrl}
+                  alt={asset.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition group-hover:scale-105"
+                />
+              </div>
+              <div
+                className={`truncate px-2 py-1.5 text-center text-xs ${
+                  selected ? "text-accent" : "text-muted-foreground"
+                }`}
+              >
+                {asset.name}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
