@@ -1,10 +1,32 @@
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  fillOpsTemplate,
+  getOpsConfig,
+  getOpsRecommendedMatches,
+  getPrimaryPushTemplate,
+} from "@/lib/ops-config";
 
 export function PushBanner() {
   const [open, setOpen] = useState(true);
+  const banner = useMemo(() => {
+    const config = getOpsConfig();
+    const primaryMatch = getOpsRecommendedMatches(config)[0];
+    const template = getPrimaryPushTemplate(config);
+    const vars = {
+      team1: primaryMatch?.team1 ?? "主队",
+      team2: primaryMatch?.team2 ?? "客队",
+      tournament: primaryMatch?.tournamentName ?? "电竞赛事",
+    };
+    return {
+      title: template.title,
+      body: fillOpsTemplate(template.body, vars),
+      cta: template.cta,
+    };
+  }, []);
+
   return (
     <AnimatePresence>
       {open && (
@@ -20,16 +42,14 @@ export function PushBanner() {
               <Bell className="h-5 w-5 text-accent" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs uppercase tracking-widest text-accent">毒奶观察室</div>
-              <div className="truncate text-sm font-semibold text-foreground">
-                泉水指挥官：TES vs JDG 30 分钟后开团！
-              </div>
+              <div className="text-xs uppercase tracking-widest text-accent">{banner.title}</div>
+              <div className="truncate text-sm font-semibold text-foreground">{banner.body}</div>
             </div>
             <Link
               to="/pre-match"
               className="rounded-lg bg-accent/30 px-3 py-1.5 text-xs font-display uppercase tracking-wider text-accent-foreground neon-border-accent hover:bg-accent/50"
             >
-              查看
+              {banner.cta}
             </Link>
             <button
               onClick={() => setOpen(false)}

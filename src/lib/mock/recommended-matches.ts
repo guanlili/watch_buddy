@@ -1,5 +1,6 @@
 import type { RecommendedMatch, Tournament } from "./types";
 import { TOURNAMENTS } from "./types";
+import { getOpsConfig, getOpsRecommendedMatches } from "@/lib/ops-config";
 
 // 生成推荐赛事的mock数据
 const now = Date.now();
@@ -82,7 +83,10 @@ export function getRecommendedMatches(userProfile: {
   const userTournament = TOURNAMENTS.find((t) => t.id === userProfile.tournament);
   const userTournamentName = userTournament?.name || "";
 
-  const matches = [...RECOMMENDED_MATCHES];
+  const opsConfig = getOpsConfig();
+  const opsMatches = getOpsRecommendedMatches(opsConfig);
+  const matches = opsMatches.length > 0 ? opsMatches : [...RECOMMENDED_MATCHES];
+  const recommendationMeta = new Map(opsConfig.recommendations.map((match) => [match.id, match]));
 
   // 优先排序：用户选择的赛事优先，正在直播的优先，然后按时间排序
   matches.sort((a, b) => {
@@ -96,6 +100,15 @@ export function getRecommendedMatches(userProfile: {
     // 正在直播的优先
     if (a.isLive !== b.isLive) {
       return a.isLive ? -1 : 1;
+    }
+
+    const aMeta = recommendationMeta.get(a.id);
+    const bMeta = recommendationMeta.get(b.id);
+    if (!!aMeta?.pinned !== !!bMeta?.pinned) {
+      return aMeta?.pinned ? -1 : 1;
+    }
+    if ((aMeta?.weight ?? 0) !== (bMeta?.weight ?? 0)) {
+      return (bMeta?.weight ?? 0) - (aMeta?.weight ?? 0);
     }
 
     // 按开始时间排序

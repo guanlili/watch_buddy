@@ -21,6 +21,9 @@ export class VoiceRecorder {
   }
 
   static async start(): Promise<VoiceRecorder> {
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      throw new Error("麦克风需要 HTTPS 安全访问；请使用 https 域名或 localhost。");
+    }
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       throw new Error("当前浏览器不支持麦克风录音");
     }
