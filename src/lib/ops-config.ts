@@ -47,12 +47,31 @@ export interface OpsPushTemplate {
   cta: string;
 }
 
+export interface OpsDemoMode {
+  // 演示模式总开关：开启后赛中 / 赛后会优先保证「不卡、不翻车」。
+  enabled: boolean;
+  // 强制本地兜底：完全跳过云端 LLM / 海报调用，直接用预制内容（离线也能演示）。
+  forceLocalFallback: boolean;
+  // 云端调用超时（毫秒），超时即自动切兜底，避免隧道抖动时一直转圈。
+  requestTimeoutMs: number;
+  // 海报生成通常更慢，单独给一个稍长但可控的超时。
+  posterTimeoutMs: number;
+}
+
 export interface OpsConfig {
   version: 1;
   matches: OpsMatchConfig[];
   recommendations: OpsRecommendedMatchConfig[];
   pushTemplates: OpsPushTemplate[];
+  demoMode: OpsDemoMode;
 }
+
+export const DEFAULT_DEMO_MODE: OpsDemoMode = {
+  enabled: false,
+  forceLocalFallback: false,
+  requestTimeoutMs: 9000,
+  posterTimeoutMs: 15000,
+};
 
 export const DEFAULT_OPS_CONFIG: OpsConfig = {
   version: 1,
@@ -142,6 +161,7 @@ export const DEFAULT_OPS_CONFIG: OpsConfig = {
       cta: "复盘",
     },
   ],
+  demoMode: DEFAULT_DEMO_MODE,
 };
 
 export function getOpsConfig(): OpsConfig {
@@ -151,10 +171,15 @@ export function getOpsConfig(): OpsConfig {
   try {
     const parsed = JSON.parse(raw) as OpsConfig;
     if (parsed.version !== 1) return DEFAULT_OPS_CONFIG;
-    return parsed;
+    // 兼容旧版本配置：缺失 demoMode 时补默认值，避免读取时报错。
+    return { ...parsed, demoMode: { ...DEFAULT_DEMO_MODE, ...parsed.demoMode } };
   } catch {
     return DEFAULT_OPS_CONFIG;
   }
+}
+
+export function getDemoMode(config = getOpsConfig()): OpsDemoMode {
+  return config.demoMode ?? DEFAULT_DEMO_MODE;
 }
 
 export function setOpsConfig(config: OpsConfig) {

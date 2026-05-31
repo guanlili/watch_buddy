@@ -10,6 +10,9 @@ import { NeonButton } from "@/components/NeonButton";
 import { EMOTION_MAP } from "@/lib/mock/emotion-map";
 import { generatePoster } from "@/lib/api/image.functions";
 import { chatCompletion } from "@/lib/api/chat.functions";
+import { withTimeout } from "@/lib/net";
+import { getDemoMode } from "@/lib/ops-config";
+import { shareOrCopy, sharePosterBlob, sharePosterImage } from "@/lib/share";
 import { Textarea } from "@/components/Textarea";
 import { LoadingOverlay, ErrorState } from "@/components/StatusOverlay";
 import { buildPosterPrompt, type PosterContext, type PosterVariant } from "@/lib/prompts/poster";
@@ -88,7 +91,7 @@ function PostMatch() {
   }, [initialPlayerAssetId]);
   // 海报缓存：每个变体单独跟踪 url / loading / error，避免重复调 API。
   const [posterCache, setPosterCache] = useState<
-    Record<PosterVariant, { loading: boolean; url?: string; error?: string }>
+    Record<PosterVariant, { loading: boolean; url?: string; error?: string; fellBack?: boolean }>
   >({
     0: { loading: false },
     1: { loading: false },
@@ -201,24 +204,35 @@ function PostMatch() {
       toast.error("用户档案缺失，请先去新手引导填一下。");
       return;
     }
+    const demo = getDemoMode();
     setCopyCache((cur) => ({ ...cur, [t]: { loading: true } }));
     try {
+      // 演示模式强制兜底：跳过云端，直接用本地预制文案。
+      if (demo.forceLocalFallback) throw new Error("demo:forced-local");
       const scenario: OutputScenario = t === "light" ? "friend_circle" : "official_social";
       const systemPrompt = buildPostMatchCopyPrompt(scenario, ctx);
-      const { reply } = await chatCompletion({
-        data: {
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "请按上面要求直接生成文案本体，不要任何前缀、标题或解释。" },
-          ],
-          temperature: 0.85,
-        },
-      });
+      const { reply } = await withTimeout(
+        chatCompletion({
+          data: {
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: "请按上面要求直接生成文案本体，不要任何前缀、标题或解释。" },
+            ],
+            temperature: 0.85,
+          },
+        }),
+        demo.requestTimeoutMs,
+      );
       setCopyCache((cur) => ({ ...cur, [t]: { loading: false, text: reply.trim() } }));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setCopyCache((cur) => ({ ...cur, [t]: { loading: false, error: msg } }));
-      toast.error(`文案生成失败：${msg}`);
+      if (demo.forceLocalFallback) {
+        // 强制兜底是预期行为，静默显示本地文案即可。
+        setCopyCache((cur) => ({ ...cur, [t]: { loading: false } }));
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        setCopyCache((cur) => ({ ...cur, [t]: { loading: false, error: msg } }));
+        toast.error(`文案生成失败：${msg}`);
+      }
     }
   }
 
@@ -260,25 +274,56 @@ function PostMatch() {
       toast.error("请先选择选手和英雄素材。");
       return;
     }
+    const demo = getDemoMode();
     setPosterCache((cur) => ({ ...cur, [v]: { loading: true } }));
     try {
+      // 演示模式强制兜底：跳过 Seedream，直接用本地渐变海报，零等待。
+      if (demo.forceLocalFallback) throw new Error("demo:forced-local");
       const prompt = `${buildPosterPrompt(v, posterContext(v))}${posterReferencePrompt()}`;
-      const { url } = await generatePoster({
-        data: {
-          prompt,
-          referenceImageUrls: [selectedPlayerAsset.imageUrl, selectedHeroAsset.imageUrl],
-        },
-      });
+      const { url } = await withTimeout(
+        generatePoster({
+          data: {
+            prompt,
+            referenceImageUrls: [selectedPlayerAsset.imageUrl, selectedHeroAsset.imageUrl],
+          },
+        }),
+        demo.posterTimeoutMs,
+      );
       setPosterCache((cur) => ({ ...cur, [v]: { loading: false, url } }));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setPosterCache((cur) => ({ ...cur, [v]: { loading: false, error: msg } }));
-      toast.error(`海报生成失败：${msg}`);
+      // 失败 / 超时不弹错误页，直接用本地渐变海报兜底，保证赛后永远有一张可分享的图。
+      setPosterCache((cur) => ({ ...cur, [v]: { loading: false, fellBack: true } }));
+      if (!demo.forceLocalFallback) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.message("AI 出片失败，已用本地兜底海报", { description: msg.slice(0, 60) });
+      }
+    }
+  }
+
+  async function sharePoster() {
+    const url = posterCache[selectedPoster].url;
+    if (url) {
+      await sharePosterImage(url, { filename: `毒奶观察室-${team}.png`, text: copyText });
+    } else {
+      // 还没出 AI 图（或本地兜底版）：把当前预览即时渲染成 PNG，分享动作仍然是“出片”。
+      const blob = await renderFallbackPosterPng({
+        variant: selectedPoster,
+        team,
+        opponent,
+        score,
+        finalResult,
+        goldenQuote:
+          goldenQuotes[selectedPoster % Math.max(1, goldenQuotes.length)]?.agentResponse ??
+          userQuotes[0] ??
+          "电竞真好",
+        userQuote: userQuotes[selectedPoster % Math.max(1, userQuotes.length)] ?? "稳了",
+      });
+      await sharePosterBlob(blob, { filename: `毒奶观察室-${team}.png`, text: copyText });
     }
   }
 
   return (
-    <main className="relative min-h-screen px-4 py-10">
+    <main className="relative min-h-screen px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-4xl">
         <Link
           to="/match"
@@ -407,9 +452,14 @@ function PostMatch() {
                     generatedUrl={cache.url}
                   />
                   {cache.loading && <LoadingOverlay message="AI 出片中…" />}
-                  {!cache.url && !cache.loading && !cache.error && (
+                  {!cache.url && !cache.loading && !cache.error && !cache.fellBack && (
                     <div className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                       预览
+                    </div>
+                  )}
+                  {!cache.loading && !cache.url && cache.fellBack && (
+                    <div className="absolute right-2 top-2 rounded-full bg-accent/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent">
+                      本地兜底版
                     </div>
                   )}
                   {!cache.loading && cache.error && (
@@ -425,7 +475,7 @@ function PostMatch() {
           </div>
 
           {/* 生成主按钮 */}
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
               已选风格：
               <span className="ml-1 text-accent">
@@ -435,29 +485,35 @@ function PostMatch() {
                 <span className="ml-2 text-muted-foreground/70">(已生成，可重新生成)</span>
               )}
             </div>
-            <NeonButton
-              variant="accent"
-              size="lg"
-              onClick={() => void generateForVariant(selectedPoster)}
-              disabled={posterCache[selectedPoster].loading}
-            >
-              {posterCache[selectedPoster].loading ? (
-                <>
-                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                  AI 出片中…
-                </>
-              ) : posterCache[selectedPoster].url ? (
-                <>
-                  <RefreshCw className="mr-2 inline h-4 w-4" />
-                  重新生成
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 inline h-4 w-4" />
-                  AI 生成海报
-                </>
-              )}
-            </NeonButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <NeonButton variant="primary" onClick={() => void sharePoster()}>
+                <Share2 className="mr-1 inline h-4 w-4" />
+                分享 / 存图
+              </NeonButton>
+              <NeonButton
+                variant="accent"
+                size="lg"
+                onClick={() => void generateForVariant(selectedPoster)}
+                disabled={posterCache[selectedPoster].loading}
+              >
+                {posterCache[selectedPoster].loading ? (
+                  <>
+                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                    AI 出片中…
+                  </>
+                ) : posterCache[selectedPoster].url ? (
+                  <>
+                    <RefreshCw className="mr-2 inline h-4 w-4" />
+                    重新生成
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 inline h-4 w-4" />
+                    AI 生成海报
+                  </>
+                )}
+              </NeonButton>
+            </div>
           </div>
         </div>
 
@@ -510,7 +566,10 @@ function PostMatch() {
                 </>
               )}
             </NeonButton>
-            <NeonButton variant="ghost">
+            <NeonButton
+              variant="ghost"
+              onClick={() => void shareOrCopy({ title: "毒奶观察室 · 赛后战报", text: copyText })}
+            >
               <Share2 className="mr-1 inline h-4 w-4" />
               一键分享
             </NeonButton>
@@ -565,6 +624,117 @@ function PostMatch() {
       </div>
     </main>
   );
+}
+
+async function renderFallbackPosterPng({
+  variant,
+  team,
+  opponent,
+  score,
+  finalResult,
+  goldenQuote,
+  userQuote,
+}: {
+  variant: PosterVariant;
+  team: string;
+  opponent: string;
+  score: { ours: number; theirs: number };
+  finalResult: string | null;
+  goldenQuote: string;
+  userQuote: string;
+}): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+
+  const styles = [
+    { name: "荣耀叙事", bg1: "#5d34bc", bg2: "#15214a", accent: "#ffd86b" },
+    { name: "吐槽梗图", bg1: "#b24732", bg2: "#221a3f", accent: "#ff7a45" },
+    { name: "复盘理性", bg1: "#133944", bg2: "#17182f", accent: "#64e6ef" },
+  ];
+  const style = styles[variant];
+  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, style.bg1);
+  gradient.addColorStop(1, style.bg2);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = style.accent;
+  ctx.beginPath();
+  ctx.arc(920, 130, 230, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.font = "700 34px sans-serif";
+  ctx.fillText(`${style.name} · 毒奶观察室`, 76, 96);
+
+  ctx.fillStyle = style.accent;
+  ctx.font = "900 96px sans-serif";
+  ctx.fillText(team, 76, 230);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 126px monospace";
+  ctx.fillText(`${score.ours} : ${score.theirs}`, 76, 380);
+
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.font = "700 34px sans-serif";
+  const resultText = finalResult === "win" ? "WIN" : finalResult === "loss" ? "LOSS" : "DRAW";
+  ctx.fillText(`vs ${opponent} · ${resultText}`, 76, 440);
+
+  ctx.strokeStyle = style.accent;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(76, 850);
+  ctx.lineTo(76, 1068);
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "700 48px sans-serif";
+  wrapCanvasText(ctx, `"${variant === 1 ? userQuote : goldenQuote}"`, 110, 900, 820, 66, 4);
+
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = "700 28px sans-serif";
+  ctx.fillText("个人专属赛后战报", 76, 1240);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("poster render failed"));
+    }, "image/png");
+  });
+}
+
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+) {
+  const chars = Array.from(text);
+  const lines: string[] = [];
+  let line = "";
+  for (const char of chars) {
+    const next = line + char;
+    if (ctx.measureText(next).width > maxWidth && line) {
+      lines.push(line);
+      line = char;
+      if (lines.length === maxLines) break;
+    } else {
+      line = next;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  lines.forEach((lineText, index) => {
+    const suffix = index === maxLines - 1 && lines.length === maxLines ? "…" : "";
+    ctx.fillText(`${lineText}${suffix}`, x, y + index * lineHeight);
+  });
 }
 
 function PostSignal({
@@ -663,8 +833,8 @@ function EmotionCurve() {
   const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full min-w-[600px]">
+    <div className="w-full">
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full">
         {/* grid */}
         {[1, 2, 3, 4, 5].map((lvl) => {
           const y = h - pad - ((lvl - 1) / 4) * (h - pad * 2);

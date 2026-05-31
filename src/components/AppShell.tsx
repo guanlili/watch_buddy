@@ -49,6 +49,7 @@ function ShellHeader({ pathname }: { pathname: string }) {
       className={cn(
         "sticky top-0 z-40 w-full border-b border-accent/20",
         "bg-background/70 backdrop-blur-md",
+        "pt-[env(safe-area-inset-top)]",
       )}
     >
       {/* 底部细霓虹线 */}
@@ -57,10 +58,7 @@ function ShellHeader({ pathname }: { pathname: string }) {
       <div className="mx-auto flex h-12 max-w-7xl items-center justify-between gap-3 px-4">
         {/* Left: brand */}
         <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-80">
-          <span className="text-lg leading-none">🐶</span>
-          <span className="font-display text-xs uppercase tracking-[0.2em] text-foreground sm:text-sm">
-            毒奶观察室
-          </span>
+          <img src="/logo.png" alt="毒奶观察室" className="h-8 w-auto" />
         </Link>
 
         {/* Center: page label (breadcrumb-ish) */}

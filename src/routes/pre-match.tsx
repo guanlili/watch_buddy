@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { NeonButton } from "@/components/NeonButton";
 import { MatchStageRail } from "@/components/MatchStageRail";
 import { useAppStore } from "@/lib/mock/store";
+import { shareOrCopy } from "@/lib/share";
 import {
   MATCH_HOME_TEAM,
   MATCH_HOME_TEAM_FULL,
@@ -52,8 +53,10 @@ function PreMatch() {
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
+  const shareText = `${teamFull} vs ${opponentFull} 马上开打！来「毒奶观察室」一起看，AI 搭子陪你赛前预测、赛中开喷、赛后整活。`;
+
   return (
-    <main className="relative min-h-screen px-4 py-10">
+    <main className="relative min-h-screen px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-3xl">
         <Link
           to="/welcome-card"
@@ -167,10 +170,18 @@ function PreMatch() {
             <Swords className="mr-2 inline h-4 w-4" />
             直接进直播间
           </NeonButton>
-          <NeonButton variant="accent">
+          <NeonButton
+            variant="accent"
+            onClick={() => void shareOrCopy({ title: "毒奶观察室 · 赛前阵地", text: shareText })}
+          >
             <Share2 className="mr-2 inline h-4 w-4" /> 一键分享
           </NeonButton>
-          <NeonButton variant="primary">
+          <NeonButton
+            variant="primary"
+            onClick={() =>
+              void shareOrCopy({ title: "约你看比赛", text: `${shareText} 一起开黑看球？` })
+            }
+          >
             <Bell className="mr-2 inline h-4 w-4" /> 提醒好友
           </NeonButton>
         </div>

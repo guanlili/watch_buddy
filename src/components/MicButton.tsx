@@ -4,6 +4,8 @@ import { toast } from "sonner";
 
 import { transcribeAudio } from "@/lib/api/asr.functions";
 import { VoiceRecorder } from "@/lib/audio/recorder";
+import { withTimeout } from "@/lib/net";
+import { getDemoMode } from "@/lib/ops-config";
 import { cn } from "@/lib/utils";
 
 // 微信式按住说话：
@@ -92,9 +94,12 @@ export function MicButton({
         toast.warning("说话时间太短");
         return;
       }
-      const { text } = await transcribeAudio({
-        data: { pcmBase64: audio.pcmBase64, sampleRate: audio.sampleRate },
-      });
+      const { text } = await withTimeout(
+        transcribeAudio({
+          data: { pcmBase64: audio.pcmBase64, sampleRate: audio.sampleRate },
+        }),
+        getDemoMode().requestTimeoutMs,
+      );
       const cleaned = text.trim();
       if (cleaned) onTranscribe(cleaned);
       else toast.warning("没听清，再说一遍？");

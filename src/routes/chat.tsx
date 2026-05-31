@@ -8,6 +8,8 @@ import { getRecommendedMatches } from "@/lib/mock/recommended-matches";
 import type { RecommendedMatch, Tournament } from "@/lib/mock/types";
 import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
 import { buildBuddySystemPrompt } from "@/lib/prompts/buddy";
+import { withTimeout } from "@/lib/net";
+import { getDemoMode } from "@/lib/ops-config";
 import { MicButton } from "@/components/MicButton";
 import { Input } from "@/components/Input";
 import { Send, Play, Clock, Swords, ArrowLeft, Keyboard, Mic } from "lucide-react";
@@ -76,7 +78,10 @@ function Chat() {
           content: m.text,
         })),
       ];
-      const { reply } = await chatCompletion({ data: { messages: history } });
+      const { reply } = await withTimeout(
+        chatCompletion({ data: { messages: history } }),
+        getDemoMode().requestTimeoutMs,
+      );
       const agentMsg: ChatMsg = {
         id: uid(),
         role: "agent",

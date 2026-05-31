@@ -15,10 +15,12 @@ import {
   MATCH_AWAY_TEAM,
   type SpeedOption,
 } from "@/lib/mock/timeline";
-import { EMOTION_MAP, playBeep, speakTTS } from "@/lib/mock/emotion-map";
+import { EMOTION_MAP, playBeep, speakTTS, unlockAudio } from "@/lib/mock/emotion-map";
 import type { EmotionLabel, EmotionLogEntry } from "@/lib/mock/types";
 import { chatCompletion, type ChatMessage } from "@/lib/api/chat.functions";
 import { buildLiveMatchSystemPrompt } from "@/lib/prompts/buddy";
+import { withTimeout } from "@/lib/net";
+import { getDemoMode } from "@/lib/ops-config";
 import { MicButton } from "@/components/MicButton";
 import { Input } from "@/components/Input";
 import { Chip } from "@/components/Chip";
@@ -38,6 +40,8 @@ import {
   Radio,
   Send,
   Trophy,
+  Volume2,
+  VolumeX,
   Zap,
 } from "lucide-react";
 
@@ -248,6 +252,13 @@ function Match() {
   const [inputMode, setInputMode] = useState<"text" | "voice">("text");
   const [replaySpeed, setReplaySpeed] = useState(getInitialReplaySpeed);
   const [agentNotice, setAgentNotice] = useState<string | null>(null);
+  // 音效 / 解说：iOS 必须先点一下解锁，之后才能自动播放。soundOn 控制开关，用 ref 给定时器读最新值。
+  const [audioReady, setAudioReady] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const soundOnRef = useRef(soundOn);
+  useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastInputTime = useRef(Date.now());
   const effectIdRef = useRef(0);
@@ -320,7 +331,7 @@ function Match() {
     effectIdRef.current += 1;
     setEffect({ id: effectIdRef.current, emotion });
     const meta = EMOTION_MAP[emotion];
-    if (meta.beepFreq) playBeep(meta.beepFreq, 0.3);
+    if (soundOnRef.current && meta.beepFreq) playBeep(meta.beepFreq, 0.3);
     // body shake for anger
     if (emotion === "anger") {
       document.body.classList.add("animate-shake");
@@ -387,7 +398,7 @@ function Match() {
 
     // Trigger effects + TTS in sequence (effect first, TTS slight delay)
     if (intensity >= 4) fireEffect(emotion);
-    setTimeout(() => speakTTS(text), 250);
+    if (soundOnRef.current) setTimeout(() => speakTTS(text), 250);
   }
 
   function triggerEvent(idx: number) {
@@ -428,8 +439,11 @@ function Match() {
     setReplying(true);
 
     const affect = inferUserReplyAffect(text, curScore);
+    const demo = getDemoMode();
 
     try {
+      // 演示模式开启「强制本地兜底」时，直接走预制文案，跳过云端调用，保证零延迟零失败。
+      if (demo.forceLocalFallback) throw new Error("demo:forced-local");
       // 只把最近 8 条搭子/用户对话喂给 LLM；系统事件由 system prompt 概括。
       const history: ChatMessage[] = nextMsgs
         .filter((m) => m.role !== "system")
@@ -447,9 +461,12 @@ function Match() {
         lastEventText,
       });
 
-      const { reply } = await chatCompletion({
-        data: { messages: [{ role: "system", content: systemContent }, ...history] },
-      });
+      const { reply } = await withTimeout(
+        chatCompletion({
+          data: { messages: [{ role: "system", content: systemContent }, ...history] },
+        }),
+        demo.requestTimeoutMs,
+      );
 
       const finalText = reply || "（搭子卡壳了，再喊一句？）";
       setAgentNotice(null);
@@ -465,9 +482,9 @@ function Match() {
         text,
       );
     } catch {
-      // API 挂了就用兜底文案，至少别让赛中体验断掉。
+      // API 挂了（或超时 / 演示强制兜底）就用本地文案，至少别让赛中体验断掉。
       const fallback = buildUserFeedbackFallback(text, seconds, curScore, lastEventText);
-      setAgentNotice("AI 连接不稳，已切换成本地兜底陪聊。");
+      if (!demo.forceLocalFallback) setAgentNotice("AI 连接不稳，已切换成本地兜底陪聊。");
       pushAgent(
         fallback.text,
         fallback.emotion,
@@ -491,19 +508,30 @@ function Match() {
     updateReplaySpeedSearch(speed);
   }
 
+  function handleAudioToggle() {
+    if (!audioReady) {
+      // iOS 需要在用户手势里解锁音频 / 语音合成，之后事件音效才会自动响。
+      unlockAudio();
+      setAudioReady(true);
+      setSoundOn(true);
+    } else {
+      setSoundOn((v) => !v);
+    }
+  }
+
   return (
-    <main className="relative min-h-screen px-3 py-4 sm:px-4 sm:py-6">
+    <main className="relative min-h-screen px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6">
       <EffectOverlay trigger={effect} />
 
       <div className="mx-auto max-w-3xl">
         <Link
           to="/pre-match"
-          className="hidden font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent sm:inline"
+          className="inline-block font-display text-xs uppercase tracking-widest text-muted-foreground hover:text-accent"
         >
           ← 暂离
         </Link>
 
-        <div className="mt-2 hidden sm:block">
+        <div className="mt-2 block">
           <MatchStageRail current="live" />
         </div>
 
@@ -527,6 +555,30 @@ function Match() {
               value={matchEnded ? "FT" : formatMatchTime(matchSeconds)}
             />
             <LiveMetric icon={Zap} label="情绪峰值" value={`${goldenCount} 句`} />
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-accent/25 bg-accent/[0.06] p-3 sm:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 font-display text-xs uppercase tracking-wider text-accent">
+                <Radio className="h-4 w-4 animate-pulse" />
+                Live Booth
+              </div>
+              <div className="mt-1 truncate text-sm text-muted-foreground">
+                {matchEnded ? "终场哨响，情绪留档" : "事件流、金句和 Flag 实时滚动"}
+              </div>
+            </div>
+            {!audioReady && (
+              <button
+                type="button"
+                onClick={handleAudioToggle}
+                className="shrink-0 rounded-lg border border-accent/50 bg-accent/15 px-3 py-2 font-display text-[11px] uppercase tracking-wider text-accent"
+              >
+                <Volume2 className="mr-1 inline h-3.5 w-3.5" />
+                开启解说
+              </button>
+            )}
           </div>
         </div>
 
@@ -706,6 +758,24 @@ function Match() {
               className="rounded-lg border border-border bg-white/5 px-3 py-1.5 text-xs font-display uppercase tracking-wider hover:bg-white/10"
             >
               {running ? "⏸ 暂停" : "▶ 继续"}
+            </button>
+            <button
+              onClick={handleAudioToggle}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-white/5 px-3 py-1.5 text-xs font-display uppercase tracking-wider hover:bg-white/10"
+            >
+              {!audioReady ? (
+                <>
+                  <Volume2 className="h-3.5 w-3.5 text-accent" /> 开启解说
+                </>
+              ) : soundOn ? (
+                <>
+                  <Volume2 className="h-3.5 w-3.5 text-accent" /> 音效开
+                </>
+              ) : (
+                <>
+                  <VolumeX className="h-3.5 w-3.5" /> 音效关
+                </>
+              )}
             </button>
           </div>
           {matchEnded && (

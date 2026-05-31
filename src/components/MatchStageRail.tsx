@@ -48,7 +48,7 @@ export function MatchStageRail({ current, className }: Props) {
     <nav
       aria-label="比赛阶段"
       className={cn(
-        "grid gap-2 rounded-2xl border border-border/70 bg-black/20 p-2 sm:grid-cols-3",
+        "grid grid-cols-3 gap-2 rounded-2xl border border-border/70 bg-black/20 p-2",
         className,
       )}
     >

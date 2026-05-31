@@ -1,0 +1,20 @@
+{
+  "name": "毒奶观察室 · AI 电竞赛事搭子",
+  "short_name": "毒奶观察室",
+  "description": "AI 搭子陪你看球，一起吐槽一起欢呼！",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14101e",
+  "theme_color": "#14101e",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

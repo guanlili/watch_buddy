@@ -73,10 +73,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
       { title: "毒奶观察室 · AI 电竞赛事搭子" },
       { name: "description", content: "孤单观赛？让 AI 搭子陪你赛前预测、赛中开喷、赛后整活。" },
       { name: "author", content: "毒奶观察室" },
+      // 手机端「添加到主屏」后全屏运行，更像原生 App。
+      { name: "theme-color", content: "#14101e" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "毒奶观察室" },
       { property: "og:title", content: "毒奶观察室 · AI 电竞赛事搭子" },
       {
         property: "og:description",
@@ -102,6 +111,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      {
+        rel: "apple-touch-icon",
+        href: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/58ff67b4-c6d2-46ad-a57d-efc7364e04eb/id-preview-ecfee8f3--2c37f9d7-9efc-453f-90d3-f424cbb0ff80.lovable.app-1780141719568.png",
+      },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

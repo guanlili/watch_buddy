@@ -75,7 +75,9 @@ function WelcomePage() {
           <div className="font-display text-xs uppercase tracking-[0.4em] text-accent">
             E SPORTS · AI · BUDDY
           </div>
-          <h1 className="title-stroke mt-3 text-5xl sm:text-6xl">毒奶观察室</h1>
+          <div className="mt-6 mb-8">
+            <img src="/logo.png" alt="毒奶观察室" className="mx-auto h-24 w-auto" />
+          </div>
         </motion.div>
 
         {/* AI buddy avatar */}
