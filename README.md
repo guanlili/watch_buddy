@@ -12,6 +12,11 @@ AI 搭子陪你看球，一起吐槽一起欢呼！
 - [产品需求文档（Markdown版）](docs/AI电竞赛事搭子PRD.md) - 完整的产品需求文档（推荐GitHub在线查看）
 - [产品需求文档（PDF版）](docs/AI_电竞赛事搭子PRD.pdf) - 原版PDF格式
 
+### 🎬 演示视频
+[![点击观看B站演示视频](https://img.shields.io/badge/B站-演示视频-fc87a3?style=for-the-badge&logo=bilibili)](https://www.bilibili.com/video/BV1btVZ6jEow/)
+
+直接点击上方徽章或链接访问：https://www.bilibili.com/video/BV1btVZ6jEow/
+
 ## 项目简介
 
 毒奶观察室是一个赛博风格的电竞 AI 陪看应用。它能陪伴你观看比赛，实时互动吐槽，赛后生成专属情绪回顾海报。
