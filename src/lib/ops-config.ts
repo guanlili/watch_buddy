@@ -70,7 +70,7 @@ export const DEFAULT_DEMO_MODE: OpsDemoMode = {
   enabled: false,
   forceLocalFallback: false,
   requestTimeoutMs: 9000,
-  posterTimeoutMs: 15000,
+  posterTimeoutMs: 45000,
 };
 
 export const DEFAULT_OPS_CONFIG: OpsConfig = {
