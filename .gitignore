@@ -44,3 +44,11 @@ dist-ssr
 *.rar
 *.7z
 *.gz
+
+# 演示视频（大文件不提交）
+docs/*.mp4
+docs/*.mov
+docs/*.avi
+docs/*.mkv
+docs/*.flv
+docs/*.wmv
