@@ -6,7 +6,31 @@ dist
 .git
 .gitignore
 .DS_Store
+docs/
 *.md
+*.txt
+*.pdf
+*.docx
+*.pptx
+# 视频格式
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.flv
+*.wmv
+# 演示文稿
+*.key
+*.ppt
+*.pptx
+*.pages
+*.doc
+*.docx
+# 其他文档
+*.pdf
+*.zip
+*.rar
+*.7z
 *.tar
 .env
 .env.*
