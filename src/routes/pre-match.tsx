@@ -228,27 +228,95 @@ function LineupColumn({
 }: {
   title: string;
   subtitle: string;
-  picks: { player: string; hero: string }[];
+  picks: { player: string; hero: string; playerAvatar?: string; heroAvatar?: string }[];
   tone: "ours" | "theirs";
 }) {
   const accent = tone === "ours" ? "text-accent" : "text-destructive";
   const ring = tone === "ours" ? "border-accent/40" : "border-destructive/40";
+  const heroRing = tone === "ours" ? "ring-accent/40" : "ring-destructive/40";
+  const playerRing = tone === "ours" ? "ring-accent/30" : "ring-destructive/30";
+  const fallbackBg =
+    tone === "ours" ? "bg-accent/25 text-accent" : "bg-destructive/25 text-destructive";
+  const slotBg =
+    tone === "ours"
+      ? "bg-gradient-to-r from-accent/[0.06] to-transparent"
+      : "bg-gradient-to-r from-destructive/[0.06] to-transparent";
   return (
     <div className={`rounded-xl border ${ring} bg-white/[0.03] p-3`}>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center justify-between">
         <div className={`font-display text-base ${accent}`}>{title}</div>
         <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {subtitle}
         </div>
       </div>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-1">
         {picks.map((p) => (
-          <li key={p.player} className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{p.player}</span>
-            <span className="font-mono">{p.hero}</span>
+          <li
+            key={p.player}
+            className={`flex items-center gap-2.5 rounded-lg border border-white/[0.06] ${slotBg} p-2`}
+          >
+            <Avatar
+              src={p.heroAvatar}
+              name={p.hero}
+              size={48}
+              rounded="lg"
+              className={`shrink-0 ring-1 ${heroRing}`}
+              fallbackClassName={`${fallbackBg} text-base`}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-display text-[15px] leading-tight">{p.hero}</div>
+              <div className="mt-1 flex items-center gap-1.5">
+                <Avatar
+                  src={p.playerAvatar}
+                  name={p.player}
+                  size={20}
+                  className={`shrink-0 ring-1 ${playerRing}`}
+                  fallbackClassName="bg-white/10 text-foreground/80"
+                />
+                <span className="truncate text-xs text-muted-foreground">{p.player}</span>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function Avatar({
+  src,
+  name,
+  size,
+  rounded = "full",
+  className = "",
+  fallbackClassName = "",
+}: {
+  src?: string;
+  name: string;
+  size: number;
+  rounded?: "full" | "lg";
+  className?: string;
+  fallbackClassName?: string;
+}) {
+  const roundClass = rounded === "lg" ? "rounded-lg" : "rounded-full";
+  const style = { width: size, height: size };
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        loading="lazy"
+        style={style}
+        className={`${roundClass} object-cover ${className}`}
+      />
+    );
+  }
+  return (
+    <div
+      style={style}
+      className={`grid place-items-center ${roundClass} font-display ${fallbackClassName} ${className}`}
+    >
+      <span style={{ fontSize: Math.max(10, Math.round(size * 0.46)) }}>{name.charAt(0)}</span>
     </div>
   );
 }

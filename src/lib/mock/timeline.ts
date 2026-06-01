@@ -21,17 +21,45 @@ export const MATCH_LINEUP: {
   away: MatchLineupPick[]; // 微博（对面）
 } = {
   home: [
-    { player: "轩染", hero: "马超" },
-    { player: "钟意", hero: "阿古朵" },
-    { player: "长生", hero: "海月" },
-    { player: "一诺", hero: "戈娅" },
-    { player: "大帅", hero: "空空儿" },
+    {
+      player: "轩染",
+      hero: "马超",
+      playerAvatar: "/assets/poster-library/players/xuan-ran.jpg",
+      heroAvatar: "/assets/poster-library/heroes/ma-chao.jpg",
+    },
+    {
+      player: "钟意",
+      hero: "阿古朵",
+      playerAvatar: "/assets/poster-library/players/zhong-yi.jpg",
+      heroAvatar: "/assets/poster-library/heroes/a-gu-duo.jpg",
+    },
+    {
+      player: "长生",
+      hero: "海月",
+      playerAvatar: "/assets/poster-library/players/chang-sheng.jpg",
+    },
+    {
+      player: "一诺",
+      hero: "戈娅",
+      playerAvatar: "/assets/poster-library/players/yi-nuo.jpg",
+      heroAvatar: "/assets/poster-library/heroes/ge-ya.jpg",
+    },
+    {
+      player: "大帅",
+      hero: "空空儿",
+      playerAvatar: "/assets/poster-library/players/da-shuai.jpg",
+      heroAvatar: "/assets/poster-library/heroes/kong-kong-er.jpg",
+    },
   ],
   away: [
     { player: "子墨", hero: "杨戬" },
     { player: "暖阳", hero: "元坦" },
     { player: "听悦", hero: "甄姬" },
-    { player: "小麦", hero: "艾琳" },
+    {
+      player: "小麦",
+      hero: "艾琳",
+      heroAvatar: "/assets/poster-library/heroes/ai-lin.jpg",
+    },
     { player: "梦溪", hero: "太乙真人" },
   ],
 };

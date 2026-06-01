@@ -182,6 +182,8 @@ export interface MatchEvent {
 export interface MatchLineupPick {
   player: string;
   hero: string;
+  playerAvatar?: string;
+  heroAvatar?: string;
 }
 
 export interface RecommendedMatch {
