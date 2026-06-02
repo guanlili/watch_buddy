@@ -20,9 +20,15 @@ export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
     tokendanceApiKey: process.env.TOKENDANCE_API_KEY,
-    tokendanceModel: process.env.TOKENDANCE_MODEL ?? "deepseek-v3.2",
-    tokendanceBaseUrl: process.env.TOKENDANCE_BASE_URL ?? "https://tokendance.space/gateway",
+    tokendanceModel: process.env.TOKENDANCE_MODEL && process.env.TOKENDANCE_MODEL.trim()
+      ? process.env.TOKENDANCE_MODEL.trim()
+      : "deepseek-v3.2",
+    tokendanceBaseUrl: process.env.TOKENDANCE_BASE_URL && process.env.TOKENDANCE_BASE_URL.trim()
+      ? process.env.TOKENDANCE_BASE_URL.trim()
+      : "https://tokendance.space/gateway",
     stepApiKey: process.env.STEP_API_KEY,
-    stepBaseUrl: process.env.STEP_BASE_URL ?? "https://api.stepfun.com",
+    stepBaseUrl: process.env.STEP_BASE_URL && process.env.STEP_BASE_URL.trim()
+      ? process.env.STEP_BASE_URL.trim()
+      : "https://api.stepfun.com",
   };
 }
